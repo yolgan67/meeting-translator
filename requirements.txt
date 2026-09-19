@@ -1,0 +1,12 @@
+# Canli Toplanti Cevirmeni - Python 3.12
+# ONEMLI: torch / transformers KURULMAZ (disk ve RAM tasarrufu).
+faster-whisper==1.1.1
+PyAudioWPatch==0.2.12.7
+ctranslate2>=4.4,<5
+sentencepiece>=0.2.0
+numpy>=1.26,<3
+PyYAML>=6.0
+psutil>=5.9
+keyboard>=0.13.5
+# faster-whisper 1.1.1 dogrudan requests kullanir, huggingface_hub 1.x artik cekmiyor
+requests>=2.32

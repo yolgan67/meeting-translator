@@ -1,0 +1,63 @@
+# Canli Toplanti Cevirmeni ayarlari.
+# Bu dosyadaki her deger src/config.py icindeki DEFAULTS ile birlestirilir,
+# yani sadece degistirmek istedigin satirlari birakabilirsin.
+
+audio:
+  device: auto          # auto = varsayilan hoparlor cikisinin WASAPI loopback'i
+  sample_rate: 16000    # Whisper 16 kHz bekler, degistirme
+
+asr:
+  model: base.en        # tiny.en (hizli) | base.en (dengeli) | small.en (dogru ama agir)
+  # Ara altyazi icin ayri (kucuk) model. Olculdu: cagri basina tiny.en ~0,6 sn,
+  # base.en ~1,1 sn. Whisper her cagrida sesi 30 sn'ye doldurdugu icin bu maliyet
+  # tampon uzunlugundan bagimsizdir; ara altyazida gecikmeyi belirleyen budur.
+  # Bos birakilirsa ara altyazi da ana modeli kullanir (daha yavas, daha dogru).
+  partial_model: tiny.en
+  compute_type: int8
+  cpu_threads: 3        # 4 cekirdekli CPU'da 1 cekirdek Teams'e birakilir
+  beam_size: 1          # 1 = greedy, en hizli
+  language: en
+  # Halusinasyon filtresi (olculen: gercek konusma -0.07..-0.40, uydurma -1.03..-1.61)
+  min_avg_logprob: -0.85
+  partial_min_avg_logprob: -0.6   # ara altyazilar icin daha siki esik
+  max_no_speech_prob: 0.5
+  # Whisper'in kendi VAD'i kendi segmenter'imizin uzerine binince sessiz konusmayi
+  # tamamen siliyor (olculdu); bu yuzden kapali, halusinasyonu skor filtresi tutuyor.
+  vad_filter: false
+
+segmenter:
+  silence_ms: 700       # bu kadar sessizlik = cumle bitti
+  min_speech_ms: 400    # daha kisa sesler yok sayilir (tik, bildirim sesi)
+  max_segment_s: 8        # uzun monologlarda zorunlu kesme (en sessiz noktadan)
+  preroll_ms: 500       # konusma basindaki ilk hecenin kacmamasi icin on tampon
+  vad_multiplier: 1.8   # esik = gurultu tabani * bu katsayi
+  vad_release_ratio: 0.4   # konusma basladiktan sonra esigin dusurulme orani
+  vad_abs_floor: 0.0015 # mutlak alt esik; olculdu: sessiz konusma rms ~0.003
+  merge_below_s: 2.0    # bundan kisa parcalar tek basina basilmaz, sonrakine eklenir
+  carry_wait_ms: 1200   # devami gelmezse kisa parca bu sure sonra tek basina basilir
+  # Ara altyazi: cumle bitmeden bu araliklarla o ana kadarki metin gosterilir.
+  # 0 = kapali. Algilanan gecikmenin buyuk kismi bu bekleme suresidir.
+  partial_every_ms: 600
+  # Ara altyazida cozulen ses penceresi. Uzun cumlede tum tamponu bastan cozmek
+  # CPU'yu sisiriyordu; sadece son N saniye cozulur (tam cumle sonda zaten gelir).
+  partial_window_s: 4.0
+
+translate:
+  engine: local         # local | deepl | none
+  model_dir: models/opus-mt-en-tr-ct2
+  source_prefix: ""     # cok hedefli modeller icin ornegin ">>tur<<"
+  deepl_api_key: ""     # engine: deepl secilirse doldurulur (opsiyonel, ucretsiz kota)
+
+ui:
+  mode: bilingual       # bilingual (EN+TR) | tr_only
+  show_partial: true    # kesinlesmemis ara altyaziyi soluk renkte goster
+  max_lines: 4          # ekranda tutulan replik sayisi
+  opacity: 0.85
+  font_size_tr: 22
+  font_size_en: 12
+  width: 900
+  height: 260
+  margin_bottom: 80     # ekranin altindan bosluk (px)
+
+log:
+  dir: logs
