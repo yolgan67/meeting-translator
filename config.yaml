@@ -54,7 +54,7 @@ ui:
   mode: bilingual   # bilingual (EN+TR) | tr_only | en_only
   show_partial: true   # kesinlesmemis ara altyaziyi soluk renkte goster
   max_lines: 2   # ekranda gosterilen replik sayisi (pencere yuksekligini belirler)
-  auto_height: true     # false ise yukseklik asagidaki 'height' degerinde sabit kalir
+  auto_height: false   # false ise yukseklik asagidaki 'height' degerinde sabit kalir
   max_height_ratio: 0.7 # pencere en fazla ekran yuksekliginin bu karina cikar
   opacity: 0.85
   font_size_tr: 22
@@ -62,8 +62,8 @@ ui:
   color_tr: "#ffffff"   # Turkce satir rengi
   color_en: "#8b98a5"   # Ingilizce satir rengi
   color_bg: "#0f1216"   # arka plan
-  width: 900
-  height: 260
+  width: 1100
+  height: 290
   margin_bottom: 80     # ekranin altindan bosluk (px)
 
 log:

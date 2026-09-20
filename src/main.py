@@ -23,14 +23,31 @@ from .config import load_config, resolve_path
 from .session_log import SessionLog, fmt_clock
 from .translate import BaseEngine, NullEngine, TranslationError, build_engine
 
-# pythonw ile (konsolsuz) baslatildiginda stdout/stderr None olabilir; o zaman
-# her print cagrisi uygulamayi cokertir.
-if sys.stdout is None or sys.stderr is None:
+# pythonw ile (konsolsuz) baslatildiginda stdout/stderr None veya gecersiz olur;
+# her print cagrisi uygulamayi cokertir ya da kilitler. Bu durumda mesajlar
+# logs/app.log dosyasina yazilir, boylece konsol penceresi acik tutmak gerekmez.
+def _redirect_output_to_file() -> None:
     import os
+    from pathlib import Path
 
-    _devnull = open(os.devnull, "w", encoding="utf-8")
-    sys.stdout = sys.stdout or _devnull
-    sys.stderr = sys.stderr or _devnull
+    log_dir = Path(__file__).resolve().parent.parent / "logs"
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        path = log_dir / "app.log"
+        # Her oturum ekleniyor; sinirsiz buyumesin.
+        if path.is_file() and path.stat().st_size > 1_000_000:
+            path.replace(log_dir / "app.log.1")
+        stream = open(path, "a", encoding="utf-8", buffering=1)
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        stream.write(f"{chr(10)}===== {stamp} ====={chr(10)}")
+    except OSError:
+        stream = open(os.devnull, "w", encoding="utf-8")
+    sys.stdout = stream
+    sys.stderr = stream
+
+
+if sys.stdout is None or sys.stderr is None or "pythonw" in sys.executable.lower():
+    _redirect_output_to_file()
 
 # Windows konsolu varsayilan cp1252; Turkce karakterler UnicodeEncodeError verir.
 for _stream in (sys.stdout, sys.stderr):
@@ -290,6 +307,22 @@ def main(argv: list[str] | None = None) -> int:
     configure_threads(int(cfg["asr"]["cpu_threads"]))
     set_low_priority()
 
+    if not args.console:
+        from .instance import SHOW_FLAG, request_show, running_pid, write_pid
+
+        # Ikinci kez cift tiklandiginda yeni ornek acmak yerine mevcut pencereyi
+        # one getir. Bu kontrol model yuklemeden ONCE yapilmali: aksi halde
+        # ikinci kopya ~570 MB'i bosa yukluyor (ve ceviri modeli bellege
+        # sigmayabiliyor), sonra cikiyordu.
+        other = running_pid()
+        if other:
+            print(f"Uygulama zaten calisiyor (PID {other}); pencere one getiriliyor.")
+            request_show()
+            return 0
+
+        SHOW_FLAG.unlink(missing_ok=True)  # onceki oturumdan kalan bayrak
+        write_pid()
+
     pipe = Pipeline(cfg, console=args.console)
     pipe.load_models()
     pipe.start()
@@ -306,10 +339,6 @@ def main(argv: list[str] | None = None) -> int:
     else:
         from .overlay import Overlay
 
-        from .instance import SHOW_FLAG, clear_pid, write_pid
-
-        SHOW_FLAG.unlink(missing_ok=True)  # onceki oturumdan kalan bayrak
-        write_pid()
         overlay = Overlay(cfg["ui"], pipe.ui_q, on_quit=pipe.stop,
                           on_mode_change=pipe.on_mode_change)
         pipe.is_paused = lambda: overlay.paused

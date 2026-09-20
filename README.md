@@ -13,8 +13,15 @@ internet, hesap, abonelik veya API anahtarı gerekmez. Ses kaydı tutulmaz, sade
 
 ## Kullanım
 
-**En kolay yol:** `Toplanti-Cevirmeni.bat` dosyasına çift tıkla. PowerShell gerektirmez.
-(Sağ tık → Gönder → Masaüstü, ile kısayol yapabilirsin.)
+**En kolay yol:** `Toplanti-Cevirmeni.bat` dosyasına çift tıkla. PowerShell gerektirmez,
+**konsol penceresi açılmaz** — açık tutman gereken bir pencere yok, uygulama arka planda
+çalışır. (Sağ tık → Gönder → Masaüstü, ile kısayol yapabilirsin.)
+
+- Başlangıç mesajları ve hatalar `logspp.log` dosyasına yazılır (1 MB'ı geçince
+  `app.log.1` olarak devredilir).
+- İkinci kez çift tıklarsan yeni kopya açılmaz; var olan pencere öne getirilir.
+  (Aksi halde ikinci kopya ~570 MB'ı boşa yükler ve çeviri modeli belleğe sığmaz.)
+- Kapatmak için altyazı çubuğundaki `×` veya `Ctrl+Shift+Q`.
 
 **PowerShell'den** (klasörde sağ tık → "Terminalde aç"):
 
@@ -25,7 +32,8 @@ internet, hesap, abonelik veya API anahtarı gerekmez. Ses kaydı tutulmaz, sade
 .\run.ps1 -Engine none       # çeviri kapalı, sadece İngilizce transkript
 ```
 
-Toplantı bitince pencereyi kapat (`×` veya `Ctrl+Shift+Q`); transkript yolu konsola yazılır.
+Toplantı bitince pencereyi kapat (`×` veya `Ctrl+Shift+Q`). Transkript
+`logs/<tarih_saat>/transcript.md` dosyasında; yolu `logs/app.log` içinde de yazılı.
 
 ### Ayarlar penceresi
 
