@@ -199,6 +199,30 @@ class DeepLEngine(BaseEngine):
         return out
 
 
+def as_str_map(value, name: str) -> dict[str, str]:
+    """config.yaml'daki sozluk ayarlarini guvene alir.
+
+    Kullanici yanlis bicim yazarsa (ornegin liste) uygulama acilista
+    AttributeError ile coker; pythonw ile calistigi icin bu sessiz bir cokme
+    olur. Bu yuzden gecersiz deger yok sayilip uyari basilir.
+    """
+    if not value:
+        return {}
+    if not isinstance(value, dict):
+        print(f"[uyari] config.yaml -> translate.{name} sozluk olmali, "
+              f"su an {type(value).__name__}; yok sayiliyor. "
+              f'Dogru bicim: {name}: {{"kalip": "karsilik"}}')
+        return {}
+    out = {}
+    for key, val in value.items():
+        if isinstance(val, str):
+            out[str(key)] = val
+        else:
+            print(f"[uyari] config.yaml -> translate.{name}: '{key}' degeri metin "
+                  f"degil ({type(val).__name__}), yok sayiliyor")
+    return out
+
+
 def build_engine(cfg: dict, cpu_threads: int = 1) -> BaseEngine:
     from .config import resolve_path
 
@@ -212,7 +236,7 @@ def build_engine(cfg: dict, cpu_threads: int = 1) -> BaseEngine:
         source_prefix=cfg.get("source_prefix", ""),
         cpu_threads=cpu_threads,
         beam_size=int(cfg.get("beam_size", 4)),
-        phrase_map=cfg.get("phrase_map") or {},
+        phrase_map=as_str_map(cfg.get("phrase_map"), "phrase_map"),
         use_phrases=bool(cfg.get("simplify_idioms", True)),
-        post_map=cfg.get("post_map") or {},
+        post_map=as_str_map(cfg.get("post_map"), "post_map"),
     )

@@ -202,6 +202,53 @@ Not: fiil biçimleri bilerek listede değil — "deployed"/"deploy" eşlemesi
 `"We deployed the fix to prod"` gibi cümlelerde `prod` eşlemesiyle üst üste binip
 bozuk çıktı veriyordu (ölçüldü).
 
+### Kendi teknik terimlerini nasıl eklerim?
+
+Üç ayrı yer var, üçü farklı işe yarar. `config.yaml` içinde:
+
+**1) `asr.initial_prompt` — kelimenin DOĞRU YAZILMASI için** (transkripti etkiler):
+
+```yaml
+asr:
+  initial_prompt: "Salesforce, Apex, LWC, sandbox, UAT, sprint, backlog, Jira"
+```
+
+50 kelimeyi geçme: Whisper uzun ipuçlarını kırpar ve bazen listedeki kelimeleri
+hiç geçmediği halde uydurur.
+
+**2) `translate.phrase_map` — İngilizce kalıbı çeviriden ÖNCE sadeleştirmek için.**
+Bir terim saçma çevriliyorsa sol tarafa kalıbı, sağ tarafa modelin anlayacağı sade
+İngilizce'yi yaz. Büyük/küçük harf farketmez. Ekranda gördüğün İngilizce değişmez:
+
+```yaml
+translate:
+  phrase_map:
+    "UAT": "user acceptance testing"
+    "the org": "the Salesforce environment"
+    "go-live": "production release date"
+```
+
+**3) `translate.post_map` — Türkçe çıktıda kelime değiştirmek için** (en son uygulanır;
+bir terimi İngilizce bırakmak istiyorsan). **Büyük/küçük harf aynen eşleşmeli**, iki
+biçimi de yaz:
+
+```yaml
+translate:
+  post_map:
+    "Kullanıcı kabul testi": "UAT"
+    "kullanıcı kabul testi": "UAT"
+```
+
+**Girdiğin terimler işe yarıyor mu?** Tahmin etmek yerine dene:
+
+```powershell
+.\.venv\Scripts\python tools\try_terms.py --text "UAT starts Monday in the org."
+```
+
+Araç ayarların biçimini doğrular, hangi kalıpların eşleştiğini ve çevirinin
+ayarsız/ayarlı halini yan yana gösterir. Yanlış biçim yazarsan (örneğin sözlük
+yerine liste) uygulama çökmez, uyarıp o ayarı yok sayar.
+
 ### Daha da iyisi isteniyorsa
 
 | Yol | Kazanç | Bedeli (ölçülen) |

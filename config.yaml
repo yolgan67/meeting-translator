@@ -17,8 +17,15 @@ asr:
   cpu_threads: 3        # 4 cekirdekli CPU'da 1 cekirdek Teams'e birakilir
   beam_size: 1          # 1 = greedy, en hizli
   language: en
-  # Jargon/ozel isim ipucu (bos birakilabilir):
-  # initial_prompt: "Salesforce, Apex, sandbox, deployment, sprint, backlog"
+  # JARGON IPUCU: Whisper'in ozel isimleri/kisaltmalari DOGRU YAZMASI icin.
+  # Sadece transkripti etkiler, ceviriyi etkilemez. Virgulle ayrilmis liste
+  # ya da normal bir cumle yazabilirsin. 50 kelimeyi gecmemeye calis: Whisper
+  # uzun ipuclarini kirpar ve bazen listedeki kelimeleri hic gecmedigi halde
+  # uydurur. Ornek (kendi urun/musteri/teknoloji adlarini yaz):
+  #
+  # initial_prompt: "Salesforce, Apex, LWC, sandbox, Jira, sprint, backlog,
+  #   Dragin, Azure DevOps, API, endpoint, payload"
+  #
   initial_prompt: ""
   # Halusinasyon filtresi (olculen: gercek konusma -0.07..-0.40, uydurma -1.03..-1.61)
   min_avg_logprob: -0.85
@@ -53,11 +60,33 @@ translate:
   partial_beam_size: 1  # ara altyazida hiz onemli, greedy kalir
   # Toplanti deyimleri cevirmeden once sade Ingilizce'ye cevrilir; yoksa
   # "circle back" -> "tekrar cember cizecegim" gibi sacma ceviriler cikiyor.
-  # Liste: src/phrases.py. Buraya kendi terimlerini ekleyebilirsin.
+  # Hazir liste (~70 kalip): src/phrases.py
   simplify_idioms: true
-  phrase_map: {}        # ornek: {"our deck": "our slides"}
-  # Turkce ciktida son rotus: tekrar eden bir kelimeyi degistirmek ya da bir
-  # terimi Ingilizce birakmak icin. ornek: {"Dagitim": "Deployment"}
+
+  # KENDI TERIMLERIN (Ingilizce -> sade Ingilizce). Ceviriden ONCE uygulanir,
+  # ekranda gordugun Ingilizce metni DEGISTIRMEZ. Buyuk/kucuk harf farketmez.
+  # Kullan: bir kalip sacma cevriliyorsa, sol tarafa kalibi, sag tarafa
+  # "modelin anlayacagi sade Ingilizce"yi yaz.
+  # Girinti 2 bosluk, her satirda "kalip: karsilik" ve ikisi de tirnak icinde:
+  #
+  # phrase_map:
+  #   "our deck": "our slides"
+  #   "the org": "the Salesforce environment"
+  #   "go-live": "production release date"
+  #   "UAT": "user acceptance testing"
+  #   "SIT": "system integration testing"
+  #
+  phrase_map: {}
+
+  # TURKCE CIKTI ROTUSU (Turkce -> Turkce). En son uygulanir; bir terimi
+  # Ingilizce birakmak ya da tercih ettigin kelimeyi kullanmak icin.
+  # DIKKAT: buyuk/kucuk harf AYNEN eslesmeli, iki bicimi de yaz:
+  #
+  # post_map:
+  #   "Yazilim surumu": "Deployment"
+  #   "yazilim surumu": "deployment"
+  #   "cekme istegi": "PR"
+  #
   post_map: {}
   model_dir: models/opus-mt-en-tr-ct2
   source_prefix: ""     # cok hedefli modeller icin ornegin ">>tur<<"
