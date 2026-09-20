@@ -46,6 +46,7 @@ DEFAULTS: dict[str, Any] = {
         "partial_beam_size": 1,
         "simplify_idioms": True,
         "phrase_map": {},
+        "post_map": {},
     },
     "ui": {
         "mode": "bilingual",

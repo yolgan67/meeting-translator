@@ -66,7 +66,7 @@ class LocalCT2Engine(BaseEngine):
 
     def __init__(self, model_dir: str | Path, source_prefix: str = "", cpu_threads: int = 1,
                  beam_size: int = 4, phrase_map: dict | None = None,
-                 use_phrases: bool = True) -> None:
+                 use_phrases: bool = True, post_map: dict | None = None) -> None:
         import ctranslate2
         import sentencepiece as spm
 
@@ -99,6 +99,9 @@ class LocalCT2Engine(BaseEngine):
         self._pattern, self._phrases = (
             build_pattern(phrase_map) if use_phrases else (None, {})
         )
+        # Turkce ciktida tekrar eden rahatsiz edici kaliplari duzeltmek icin
+        # (ornegin bir terimi Ingilizce birakmak): {"Dagitim": "Deployment"}
+        self._post_map = {str(k): str(v) for k, v in (post_map or {}).items()}
         self._cache = _Cache()
         try:
             self._model_mb = (model_dir / "model.bin").stat().st_size / 1e6
@@ -154,6 +157,8 @@ class LocalCT2Engine(BaseEngine):
             replace_unknowns=True,
         )
         out = self.sp_tgt.decode(results[0].hypotheses[0]).strip()
+        for src, dst in self._post_map.items():
+            out = out.replace(src, dst)
         self._cache.put(key, out)
         return out
 
@@ -209,4 +214,5 @@ def build_engine(cfg: dict, cpu_threads: int = 1) -> BaseEngine:
         beam_size=int(cfg.get("beam_size", 4)),
         phrase_map=cfg.get("phrase_map") or {},
         use_phrases=bool(cfg.get("simplify_idioms", True)),
+        post_map=cfg.get("post_map") or {},
     )

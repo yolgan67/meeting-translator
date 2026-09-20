@@ -156,8 +156,15 @@ Türkçe üretiyor; çeviriden önce sade İngilizce'ye çevirme katmanı eklend
 | **circle back** tomorrow | tekrar çember çizeceğim | yarın bu konuya dönelim |
 | **park that** item | o eşyayı park edelim | bu öğeyi erteleyelim |
 
-Kendi terimlerini `config.yaml` → `translate.phrase_map` ile ekleyebilirsin,
-örn. `{"our deck": "our slides"}`.
+Liste ~70 kalıp içeriyor (`in the weeds`, `edge case`, `happy path`, `roll back`,
+`nail down`, `off the top of my head`, `deployment` …). Kendi terimlerini
+`config.yaml` → `translate.phrase_map` ile ekleyebilirsin, örn.
+`{"our deck": "our slides"}`. Türkçe çıktıda tekrar eden bir kelimeyi
+değiştirmek için `translate.post_map`, örn. `{"Salı": "Tuesday"}`.
+
+Not: fiil biçimleri bilerek listede değil — "deployed"/"deploy" eşlemesi
+`"We deployed the fix to prod"` gibi cümlelerde `prod` eşlemesiyle üst üste binip
+bozuk çıktı veriyordu (ölçüldü).
 
 ### Daha da iyisi isteniyorsa
 
@@ -167,6 +174,7 @@ Kendi terimlerini `config.yaml` → `translate.phrase_map` ile ekleyebilirsin,
 | `translate.engine: deepl` + DeepL Free anahtarı | YouTube/Google seviyesine en yakın çeviri | internet gerekir, metin dışarı gider, anahtar için kart doğrulaması |
 | `asr.model: small.en` | transkript doğruluğu artar | **çağrı başına 3,8–4,2 sn** (base.en 0,7–1,4 sn) → gecikme 4 katına çıkar, önerilmez |
 | `asr.beam_size: 3-5` | — | ölçtüm: kazanç yok, gürültülü sesde **daha kötü** ("my fellow" → "am I fellow") |
+| NLLB-200 distilled 600M (yerel, daha büyük model) | — | ölçtüm: **daha kötü**. "circle back" → "yarın daireye dönelim", "bandwidth" → "bant genişliğine sahip misin", "trade-offs" → "anlaşmazlıklarını". Üstüne cümle başına 854 ms (opus-mt 186 ms) ve +711 MB RAM |
 
 YouTube'daki çeviri Google Translate'tir: hem devasa bir çeviri modeli hem de çok
 daha büyük bir konuşma tanıma modeli kullanır ve gerçek zamanlı olmak zorunda

@@ -56,6 +56,9 @@ translate:
   # Liste: src/phrases.py. Buraya kendi terimlerini ekleyebilirsin.
   simplify_idioms: true
   phrase_map: {}        # ornek: {"our deck": "our slides"}
+  # Turkce ciktida son rotus: tekrar eden bir kelimeyi degistirmek ya da bir
+  # terimi Ingilizce birakmak icin. ornek: {"Dagitim": "Deployment"}
+  post_map: {}
   model_dir: models/opus-mt-en-tr-ct2
   source_prefix: ""     # cok hedefli modeller icin ornegin ">>tur<<"
   deepl_api_key: ""     # engine: deepl secilirse doldurulur (opsiyonel, ucretsiz kota)
