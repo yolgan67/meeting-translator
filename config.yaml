@@ -49,12 +49,17 @@ translate:
   deepl_api_key: ""     # engine: deepl secilirse doldurulur (opsiyonel, ucretsiz kota)
 
 ui:
-  mode: bilingual       # bilingual (EN+TR) | tr_only
+  # Asagidaki ayarlar uygulama icindeki dis simgesinden (sag ust) canli
+  # degistirilebilir ve "Kaydet" ile buraya geri yazilir.
+  mode: bilingual       # bilingual (EN+TR) | tr_only | en_only
   show_partial: true    # kesinlesmemis ara altyaziyi soluk renkte goster
   max_lines: 4          # ekranda tutulan replik sayisi
   opacity: 0.85
   font_size_tr: 22
   font_size_en: 12
+  color_tr: "#ffffff"   # Turkce satir rengi
+  color_en: "#8b98a5"   # Ingilizce satir rengi
+  color_bg: "#0f1216"   # arka plan
   width: 900
   height: 260
   margin_bottom: 80     # ekranin altindan bosluk (px)

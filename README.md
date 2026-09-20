@@ -27,11 +27,28 @@ internet, hesap, abonelik veya API anahtarı gerekmez. Ses kaydı tutulmaz, sade
 
 Toplantı bitince pencereyi kapat (`×` veya `Ctrl+Shift+Q`); transkript yolu konsola yazılır.
 
+### Ayarlar penceresi
+
+Altyazı çubuğunun sağ üstündeki **dişli simgesine** (veya `Ctrl+Shift+S`) bas:
+
+- **Görünüm modu:** iki dilli / sadece Türkçe / **sadece İngilizce**
+- **Yazı boyutu:** Türkçe ve İngilizce satırlar için ayrı ayrı
+- **Renkler:** Türkçe yazı, İngilizce yazı, arka plan (renk seçici ile)
+- **Saydamlık**, ekranda tutulan satır sayısı, ara altyazı açık/kapalı
+
+Değişiklikler anında uygulanır; **Kaydet** ile `config.yaml`'a yazılır (dosyadaki
+yorumlar korunur). "Varsayılana dön" ilk ayarlara döner.
+
+**Sadece İngilizce modu** İngilizce çalışmak için: çeviri tamamen atlanır ve çeviri
+modeli bellekten bırakılır — ölçüm: **~250 MB RAM serbest kalır**, CPU da düşer.
+Türkçeye geri dönünce model otomatik yeniden yüklenir (~1 sn).
+
 ### Kısayollar (pencere odakta olmasa da çalışır)
 
 | Kısayol | İşlev |
 |---|---|
-| `Ctrl+Shift+L` | İki dilli ↔ sadece Türkçe |
+| `Ctrl+Shift+S` | Ayarlar penceresi |
+| `Ctrl+Shift+L` | Mod değiştir (iki dilli → sadece TR → sadece EN) |
 | `Ctrl+Shift+H` | Altyazıyı gizle / göster |
 | `Ctrl+Shift+P` | Duraklat / devam |
 | `Ctrl+Shift+Q` | Çık (transkripti yazar) |
@@ -52,7 +69,8 @@ faster-whisper — ara altyazı: tiny.en (hızlı) · kesin altyazı: base.en (d
    ▼
 opus-mt-tc-big-en-tr (CTranslate2 int8)   → Türkçe metin
    ▼
-overlay  +  logs/<oturum>/transcript.jsonl (anında)  +  transcript.md (çıkışta)
+overlay (dişli simgesi: mod, yazı boyutu, renk)
+   +  logs/<oturum>/transcript.jsonl (anında)  +  transcript.md (çıkışta)
 ```
 
 PyTorch/transformers **kurulmaz**; her iki model de CTranslate2 üzerinde çalışır.
@@ -70,6 +88,8 @@ PyTorch/transformers **kurulmaz**; her iki model de CTranslate2 üzerinde çalı
 | CPU (ara altyazı açık, kesintisiz konuşma) | ort 1,07 çekirdek, tepe 1,9 çekirdek → sistemin %13'ü / tepe %24'ü |
 | CPU (ara altyazı kapalı) | ort 0,4 çekirdek → sistemin %5'i |
 | CPU (sessizken) | tek çekirdeğin %2-3'ü |
+| Ayarlar penceresi | açıkken +1,2 MB, kapalıyken 0 |
+| "Sadece İngilizce" moduna geçiş | −250 MB RAM (çeviri modeli bırakılır) |
 | Süreç önceliği | BelowNormal → Teams/Zoom sesi önde kalır |
 | Disk | modeller ~550 MB + bağımlılıklar ~450 MB |
 
@@ -92,7 +112,7 @@ En çok işe yarayacak olanlar:
 | `asr.min_avg_logprob` | Uydurma cümle filtresi (−0,85) | Sessizlikte saçma altyazı çıkıyorsa −0,7'ye çek |
 | `asr.partial_min_avg_logprob` | Ara altyazı filtresi (−0,6) | Ara satırlarda saçmalık varsa −0,4'e çek |
 | `segmenter.vad_abs_floor` | Mutlak ses eşiği (0,0015) | Çok kısık sesli konuşmacılarda düşür |
-| `ui.font_size_tr` / `ui.opacity` | Yazı boyutu / saydamlık | Zevke göre |
+| `ui.font_size_tr` / `ui.opacity` / `ui.color_tr` | Yazı boyutu / saydamlık / renk | Dişli simgesinden canlı değiştirilebilir |
 | `translate.engine` | `local` / `deepl` / `none` | DeepL anahtarın varsa `deepl` (daha iyi çeviri, internet gerekir) |
 
 ## Sorun giderme

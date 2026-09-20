@@ -1,6 +1,8 @@
 """Her zaman ustte duran, yari saydam altyazi penceresi (Tkinter).
 
 Electron/Qt yerine stdlib Tkinter kullanilir: ek RAM ve disk maliyeti ~0.
+Gorunum ayarlari sag ustteki dis simgesinden canli degistirilebilir
+(bkz. settings_panel.py).
 """
 from __future__ import annotations
 
@@ -8,12 +10,11 @@ import queue
 import tkinter as tk
 from dataclasses import dataclass
 
-BG = "#0f1216"
 BAR_BG = "#171c22"
-FG_TR = "#ffffff"
-FG_EN = "#8b98a5"
 FG_DIM = "#5c6773"
-FG_PARTIAL = "#9fb0c0"   # kesinlesmemis (ara) altyazi
+
+MODES = ("bilingual", "tr_only", "en_only")
+MODE_LABELS = {"bilingual": "iki dilli", "tr_only": "sadece TR", "en_only": "sadece EN"}
 
 HOTKEY_HINT = "Ctrl+Shift+L mod  |  H gizle  |  P duraklat  |  Q cikis"
 
@@ -25,16 +26,32 @@ class Line:
     tr: str
 
 
+def _mix(color: str, other: str, ratio: float) -> str:
+    """Iki rengi karistirir; ara altyazinin soluk tonunu uretmek icin."""
+    try:
+        c1 = [int(color[i : i + 2], 16) for i in (1, 3, 5)]
+        c2 = [int(other[i : i + 2], 16) for i in (1, 3, 5)]
+    except (ValueError, IndexError):
+        return color
+    mixed = [round(a * (1 - ratio) + b * ratio) for a, b in zip(c1, c2)]
+    return "#{:02x}{:02x}{:02x}".format(*mixed)
+
+
 class Overlay:
-    def __init__(self, cfg: dict, ui_queue: "queue.Queue", on_quit=None) -> None:
-        self.cfg = cfg
+    def __init__(self, cfg: dict, ui_queue: "queue.Queue", on_quit=None,
+                 on_mode_change=None) -> None:
+        self.cfg = dict(cfg)
         self.ui_queue = ui_queue
         self.on_quit = on_quit
-        self.mode = cfg.get("mode", "bilingual")
-        self.max_lines = int(cfg.get("max_lines", 4))
+        # Pipeline mod degisikligini bilmek ister: "en_only" iken ceviri yapilmaz
+        # ve ceviri modeli bellekten bosaltilir.
+        self.on_mode_change = on_mode_change
+        self.mode = self.cfg.get("mode", "bilingual")
+        self.max_lines = int(self.cfg.get("max_lines", 4))
         self.paused = False
         self.hidden = False
         self.global_hotkeys = False
+        self.settings_panel = None
         self._lines: list[Line] = []
         self._partial: Line | None = None
         self._commands: "queue.Queue[str]" = queue.Queue()
@@ -43,21 +60,30 @@ class Overlay:
         self.root.title("Toplanti Cevirmeni")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
-        self.root.attributes("-alpha", float(cfg.get("opacity", 0.85)))
-        self.root.configure(bg=BG)
+        self.root.attributes("-alpha", float(self.cfg.get("opacity", 0.85)))
+        self.root.configure(bg=self._bg())
 
-        w = int(cfg.get("width", 900))
-        h = int(cfg.get("height", 260))
-        sw = self.root.winfo_screenwidth()
-        sh = self.root.winfo_screenheight()
-        x = (sw - w) // 2
-        y = sh - h - int(cfg.get("margin_bottom", 80))
+        w = int(self.cfg.get("width", 900))
+        h = int(self.cfg.get("height", 260))
+        x = (self.root.winfo_screenwidth() - w) // 2
+        y = self.root.winfo_screenheight() - h - int(self.cfg.get("margin_bottom", 80))
         self.root.geometry(f"{w}x{h}+{x}+{max(0, y)}")
 
         self._build_widgets()
+        self._apply_styles()
         self._bind_keys()
         self._register_global_hotkeys()
         self.set_status(FG_DIM, "hazirlaniyor")
+
+    # ------------------------------------------------------------------ renkler
+    def _bg(self) -> str:
+        return self.cfg.get("color_bg", "#0f1216")
+
+    def _fg_tr(self) -> str:
+        return self.cfg.get("color_tr", "#ffffff")
+
+    def _fg_en(self) -> str:
+        return self.cfg.get("color_en", "#8b98a5")
 
     # ---------------------------------------------------------------- widgets
     def _build_widgets(self) -> None:
@@ -76,33 +102,83 @@ class Overlay:
         hint.pack(side="left", padx=12)
 
         tk.Button(
-            bar, text="×", command=self._quit, bg=BAR_BG, fg=FG_EN,
+            bar, text="×", command=self._quit, bg=BAR_BG, fg=self._fg_en(),
             relief="flat", bd=0, font=("Segoe UI", 11), activebackground=BAR_BG,
             activeforeground="#ff6b6b", cursor="hand2",
-        ).pack(side="right", padx=6)
+        ).pack(side="right", padx=(2, 6))
+
+        self.gear = tk.Button(
+            bar, text="⚙", command=self.open_settings, bg=BAR_BG, fg=self._fg_en(),
+            relief="flat", bd=0, font=("Segoe UI", 11), activebackground=BAR_BG,
+            activeforeground="#ffffff", cursor="hand2",
+        )
+        self.gear.pack(side="right", padx=2)
+
+        self.mode_label = tk.Label(bar, text="", bg=BAR_BG, fg=FG_DIM,
+                                   font=("Segoe UI", 8))
+        self.mode_label.pack(side="right", padx=6)
 
         # Baslik cubugundan pencereyi surukle
-        for widget in (bar, self.status_label, hint):
+        for widget in (bar, self.status_label, hint, self.mode_label):
             widget.bind("<Button-1>", self._drag_start)
             widget.bind("<B1-Motion>", self._drag_move)
 
         self.text = tk.Text(
-            self.root, bg=BG, fg=FG_TR, wrap="word", relief="flat", bd=0,
+            self.root, bg=self._bg(), wrap="word", relief="flat", bd=0,
             highlightthickness=0, padx=14, pady=8, cursor="arrow",
             insertwidth=0, spacing1=2, spacing3=6,
         )
         self.text.pack(side="top", fill="both", expand=True)
-        self.text.tag_configure("en", foreground=FG_EN,
-                                font=("Segoe UI", int(self.cfg.get("font_size_en", 12))))
-        self.text.tag_configure("tr", foreground=FG_TR,
-                                font=("Segoe UI Semibold", int(self.cfg.get("font_size_tr", 22))))
-        self.text.tag_configure("clock", foreground=FG_DIM, font=("Consolas", 8))
-        # Ara altyazi: henuz kesinlesmemis, daha soluk gosterilir.
-        self.text.tag_configure("en_partial", foreground=FG_DIM,
-                                font=("Segoe UI", int(self.cfg.get("font_size_en", 12))))
-        self.text.tag_configure("tr_partial", foreground=FG_PARTIAL,
-                                font=("Segoe UI", int(self.cfg.get("font_size_tr", 22))))
         self.text.configure(state="disabled")
+
+    def _apply_styles(self) -> None:
+        """Renk/font ayarlarini widget'lara yazar (canli degisiklikte de cagrilir)."""
+        bg, fg_tr, fg_en = self._bg(), self._fg_tr(), self._fg_en()
+        size_tr = int(self.cfg.get("font_size_tr", 22))
+        size_en = int(self.cfg.get("font_size_en", 12))
+
+        self.root.configure(bg=bg)
+        self.text.configure(bg=bg, fg=fg_tr)
+        self.text.tag_configure("en", foreground=fg_en, font=("Segoe UI", size_en))
+        self.text.tag_configure("tr", foreground=fg_tr,
+                                font=("Segoe UI Semibold", size_tr))
+        # Sadece Ingilizce modunda Ingilizce satir ana satir olur: buyuk ve parlak.
+        self.text.tag_configure("en_big", foreground=fg_tr,
+                                font=("Segoe UI Semibold", size_tr))
+        self.text.tag_configure("clock", foreground=_mix(fg_en, bg, 0.35),
+                                font=("Consolas", 8))
+        self.text.tag_configure("en_partial", foreground=_mix(fg_en, bg, 0.45),
+                                font=("Segoe UI", size_en))
+        self.text.tag_configure("tr_partial", foreground=_mix(fg_tr, bg, 0.4),
+                                font=("Segoe UI", size_tr))
+        self.mode_label.configure(text=MODE_LABELS.get(self.mode, self.mode))
+
+    def apply_settings(self, values: dict) -> None:
+        """Ayar penceresinden gelen degerleri aninda uygular."""
+        old_mode = self.mode
+        self.cfg.update(values)
+        self.mode = self.cfg.get("mode", "bilingual")
+        self.max_lines = int(self.cfg.get("max_lines", 4))
+        self.root.attributes("-alpha", float(self.cfg.get("opacity", 0.85)))
+        self._apply_styles()
+        del self._lines[: max(0, len(self._lines) - self.max_lines)]
+        if not self.cfg.get("show_partial", True):
+            self._partial = None
+        self._render()
+        if self.mode != old_mode and self.on_mode_change:
+            self.on_mode_change(self.mode)
+
+    def open_settings(self) -> None:
+        from .settings_panel import SettingsPanel
+
+        if self.settings_panel is not None:
+            try:
+                self.settings_panel.win.lift()
+                self.settings_panel.win.focus_force()
+                return
+            except tk.TclError:
+                self.settings_panel = None
+        self.settings_panel = SettingsPanel(self)
 
     # ------------------------------------------------------------------- keys
     def _bind_keys(self) -> None:
@@ -111,6 +187,7 @@ class Overlay:
             ("<Control-Shift-H>", "hide"), ("<Control-Shift-h>", "hide"),
             ("<Control-Shift-P>", "pause"), ("<Control-Shift-p>", "pause"),
             ("<Control-Shift-Q>", "quit"), ("<Control-Shift-q>", "quit"),
+            ("<Control-Shift-S>", "settings"), ("<Control-Shift-s>", "settings"),
         ):
             self.root.bind(seq, lambda e, c=cmd: self._cmd(c))
 
@@ -119,10 +196,10 @@ class Overlay:
         try:
             import keyboard
 
-            keyboard.add_hotkey("ctrl+shift+l", lambda: self._cmd("mode"))
-            keyboard.add_hotkey("ctrl+shift+h", lambda: self._cmd("hide"))
-            keyboard.add_hotkey("ctrl+shift+p", lambda: self._cmd("pause"))
-            keyboard.add_hotkey("ctrl+shift+q", lambda: self._cmd("quit"))
+            for combo, cmd in (("ctrl+shift+l", "mode"), ("ctrl+shift+h", "hide"),
+                               ("ctrl+shift+p", "pause"), ("ctrl+shift+q", "quit"),
+                               ("ctrl+shift+s", "settings")):
+                keyboard.add_hotkey(combo, lambda c=cmd: self._cmd(c))
             self.global_hotkeys = True
         except Exception:
             # keyboard yoksa/izin yoksa pencere odaktayken kisayollar yine calisir.
@@ -157,6 +234,8 @@ class Overlay:
         self._render()
 
     def set_partial(self, clock: str, en: str, tr: str) -> None:
+        if not self.cfg.get("show_partial", True):
+            return
         self._partial = Line(clock, en, tr)
         self._render()
 
@@ -164,21 +243,30 @@ class Overlay:
         self.text.configure(state="normal")
         self.text.delete("1.0", "end")
         for line in self._lines:
+            if self.mode == "en_only":
+                self.text.insert("end", f"[{line.clock}] ", "clock")
+                self.text.insert("end", line.en + "\n\n", "en_big")
+                continue
             if self.mode == "bilingual":
                 self.text.insert("end", f"[{line.clock}] ", "clock")
                 self.text.insert("end", line.en + "\n", "en")
             self.text.insert("end", (line.tr or line.en) + "\n\n", "tr")
+
         if self._partial:
-            if self.mode == "bilingual":
-                self.text.insert("end", self._partial.en + "\n", "en_partial")
-            self.text.insert("end", (self._partial.tr or self._partial.en) + "\n",
-                             "tr_partial")
+            if self.mode == "en_only":
+                self.text.insert("end", self._partial.en + "\n", "tr_partial")
+            else:
+                if self.mode == "bilingual":
+                    self.text.insert("end", self._partial.en + "\n", "en_partial")
+                self.text.insert("end", (self._partial.tr or self._partial.en) + "\n",
+                                 "tr_partial")
         self.text.configure(state="disabled")
         self.text.see("end")
 
-    def _toggle_mode(self) -> None:
-        self.mode = "tr_only" if self.mode == "bilingual" else "bilingual"
-        self._render()
+    def _cycle_mode(self) -> None:
+        nxt = MODES[(MODES.index(self.mode) + 1) % len(MODES)] \
+            if self.mode in MODES else MODES[0]
+        self.apply_settings({"mode": nxt})
 
     def _toggle_hidden(self) -> None:
         self.hidden = not self.hidden
@@ -201,9 +289,11 @@ class Overlay:
             except queue.Empty:
                 break
             if cmd == "mode":
-                self._toggle_mode()
+                self._cycle_mode()
             elif cmd == "hide":
                 self._toggle_hidden()
+            elif cmd == "settings":
+                self.open_settings()
             elif cmd == "pause":
                 self.paused = not self.paused
                 self.set_status(FG_DIM if self.paused else "#3ddc84",

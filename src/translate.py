@@ -43,6 +43,14 @@ class BaseEngine:
     def translate(self, text: str) -> str:  # pragma: no cover - arayuz
         raise NotImplementedError
 
+    def unload(self) -> float:
+        """Modeli bellekten bosaltir; serbest kalan tahmini MB doner."""
+        return 0.0
+
+    def ensure_loaded(self) -> None:
+        """Bosaltilmis modeli geri yukler."""
+        return None
+
 
 class NullEngine(BaseEngine):
     name = "none"
@@ -81,6 +89,10 @@ class LocalCT2Engine(BaseEngine):
         self.sp_tgt = spm.SentencePieceProcessor(model_file=str(tgt_spm))
         self.source_prefix = source_prefix.strip()
         self._cache = _Cache()
+        try:
+            self._model_mb = (model_dir / "model.bin").stat().st_size / 1e6
+        except OSError:
+            self._model_mb = 0.0
 
     @staticmethod
     def _find_spm(model_dir: Path, candidates: tuple[str, ...]) -> Path:
@@ -90,10 +102,28 @@ class LocalCT2Engine(BaseEngine):
                 return p
         raise TranslationError(f"SentencePiece dosyasi bulunamadi: {model_dir} ({candidates})")
 
+    def unload(self) -> float:
+        """Sadece Ingilizce moduna gecildiginde ~490 MB'i geri verir."""
+        try:
+            if self.translator.model_is_loaded:
+                self.translator.unload_model()
+                return self._model_mb
+        except Exception:
+            pass
+        return 0.0
+
+    def ensure_loaded(self) -> None:
+        try:
+            if not self.translator.model_is_loaded:
+                self.translator.load_model()
+        except Exception:
+            pass
+
     def translate(self, text: str) -> str:
         cached = self._cache.get(text)
         if cached is not None:
             return cached
+        self.ensure_loaded()
 
         source = f"{self.source_prefix} {text}".strip() if self.source_prefix else text
         # Marian modelleri cumle sonunu </s> ile anlar; eklenmezse decoder

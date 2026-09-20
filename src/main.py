@@ -70,6 +70,8 @@ class Pipeline:
         self.segmenter = None
         self.is_paused = lambda: False
         self.partial_logprob = float(cfg["asr"].get("partial_min_avg_logprob", -0.6))
+        # "Sadece Ingilizce" modunda ceviri hem gereksiz hem pahali.
+        self.translate_enabled = cfg["ui"].get("mode", "bilingual") != "en_only"
         self._last_line_ts = 0.0
 
     # ------------------------------------------------------------------ setup
@@ -116,6 +118,12 @@ class Pipeline:
             else:
                 raise
 
+        # Baslangictan beri "sadece Ingilizce" modundaysak modeli hemen bosalt.
+        if not self.translate_enabled:
+            freed = self.engine.unload()
+            if freed:
+                print(f"      sadece Ingilizce modu -> ceviri modeli bosaltildi")
+
     def _translate_oom(self) -> None:
         print("[uyari] Ceviri modeli bellege sigmadi -> sadece Ingilizce transkript.")
         print("        Muhtemel sebep: uygulamanin baska bir kopyasi zaten acik.")
@@ -136,6 +144,16 @@ class Pipeline:
         self.segmenter.start()
         threading.Thread(target=self._worker, name="asr-translate", daemon=True).start()
         threading.Thread(target=self._status_loop, name="status", daemon=True).start()
+
+    def on_mode_change(self, mode: str) -> None:
+        """Overlay'den mod degisikligi: ceviri gerekmiyorsa modeli bellekten bosalt."""
+        self.translate_enabled = mode != "en_only"
+        if self.translate_enabled:
+            self.engine.ensure_loaded()
+        else:
+            freed = self.engine.unload()
+            if freed:
+                print(f"[bilgi] ceviri modeli bosaltildi, ~{freed:.0f} MB serbest")
 
     def stop(self) -> None:
         self.stop_event.set()
@@ -176,11 +194,12 @@ class Pipeline:
             if not text:
                 continue
 
-            try:
-                translated = self.engine.translate(text)
-            except Exception as exc:
-                print(f"[hata] ceviri: {exc}")
-                translated = ""
+            translated = ""
+            if self.translate_enabled:
+                try:
+                    translated = self.engine.translate(text)
+                except Exception as exc:
+                    print(f"[hata] ceviri: {exc}")
 
             latency = time.monotonic() - utt.captured_at
             clock = fmt_clock(utt.start_s)
@@ -258,7 +277,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         from .overlay import Overlay
 
-        overlay = Overlay(cfg["ui"], pipe.ui_q, on_quit=pipe.stop)
+        overlay = Overlay(cfg["ui"], pipe.ui_q, on_quit=pipe.stop,
+                          on_mode_change=pipe.on_mode_change)
         pipe.is_paused = lambda: overlay.paused
         if args.duration:
             overlay.root.after(int(args.duration * 1000), overlay._quit)
