@@ -34,7 +34,12 @@ Altyazı çubuğunun sağ üstündeki **dişli simgesine** (veya `Ctrl+Shift+S`)
 - **Görünüm modu:** iki dilli / sadece Türkçe / **sadece İngilizce**
 - **Yazı boyutu:** Türkçe ve İngilizce satırlar için ayrı ayrı
 - **Renkler:** Türkçe yazı, İngilizce yazı, arka plan (renk seçici ile)
-- **Saydamlık**, ekranda tutulan satır sayısı, ara altyazı açık/kapalı
+- **Saydamlık**, **ekranda kaç replik** dursun, ara altyazı açık/kapalı
+
+Pencere yüksekliği replik sayısına ve yazı boyutuna göre kendini ayarlar (alt kenar
+sabit kalır, yukarı doğru büyür). İstediğin sayı ekrana sığmıyorsa ayar penceresi
+"yazı boyutunu küçült" diye uyarır; sabit yükseklik istersen `config.yaml` →
+`ui.auto_height: false` ve `ui.height`.
 
 Değişiklikler anında uygulanır; **Kaydet** ile `config.yaml`'a yazılır (dosyadaki
 yorumlar korunur). "Varsayılana dön" ilk ayarlara döner.
@@ -113,6 +118,7 @@ En çok işe yarayacak olanlar:
 | `asr.partial_min_avg_logprob` | Ara altyazı filtresi (−0,6) | Ara satırlarda saçmalık varsa −0,4'e çek |
 | `segmenter.vad_abs_floor` | Mutlak ses eşiği (0,0015) | Çok kısık sesli konuşmacılarda düşür |
 | `ui.font_size_tr` / `ui.opacity` / `ui.color_tr` | Yazı boyutu / saydamlık / renk | Dişli simgesinden canlı değiştirilebilir |
+| `ui.max_lines` / `ui.auto_height` | Ekranda kaç replik / pencerenin kendini boyutlaması | Sabit yükseklik istersen `auto_height: false` |
 | `translate.engine` | `local` / `deepl` / `none` | DeepL anahtarın varsa `deepl` (daha iyi çeviri, internet gerekir) |
 
 ## Sorun giderme

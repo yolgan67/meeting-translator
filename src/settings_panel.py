@@ -42,9 +42,9 @@ class SettingsPanel:
         self.color_en = cfg.get("color_en", "#8b98a5")
         self.color_bg = cfg.get("color_bg", "#0f1216")
 
+        self.status: tk.Label | None = None  # _build icinde olusturulur
         self._build()
         self._place_near_overlay()
-        self.status = None
 
     # ---------------------------------------------------------------- yerlesim
     def _build(self) -> None:
@@ -85,7 +85,7 @@ class SettingsPanel:
         ).grid(row=row, column=1, columnspan=2, sticky="w", padx=(0, 12))
         row += 1
 
-        row = self._spin_row("Ekrandaki satir", self.max_lines, 1, 10, row)
+        row = self._spin_row("Ekranda kac replik", self.max_lines, 1, 10, row)
 
         tk.Checkbutton(
             self.win, text="Ara altyazi (cumle bitmeden gosterilen soluk satir)",
@@ -178,7 +178,10 @@ class SettingsPanel:
     def _apply(self) -> None:
         try:
             self.overlay.apply_settings(self._values())
-            self._say("uygulandi (kalici olmasi icin Kaydet)")
+            if getattr(self.overlay, "height_capped", False):
+                self._say("bu kadar satir ekrana sigmiyor - yazi boyutunu kucult")
+            else:
+                self._say("uygulandi (kalici olmasi icin Kaydet)")
         except Exception as exc:
             self._say(f"hata: {exc}")
 

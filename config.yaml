@@ -53,7 +53,8 @@ ui:
   # degistirilebilir ve "Kaydet" ile buraya geri yazilir.
   mode: bilingual       # bilingual (EN+TR) | tr_only | en_only
   show_partial: true    # kesinlesmemis ara altyaziyi soluk renkte goster
-  max_lines: 4          # ekranda tutulan replik sayisi
+  max_lines: 4          # ekranda gosterilen replik sayisi (pencere yuksekligini belirler)
+  auto_height: true     # false ise yukseklik asagidaki 'height' degerinde sabit kalir
   opacity: 0.85
   font_size_tr: 22
   font_size_en: 12

@@ -46,6 +46,7 @@ DEFAULTS: dict[str, Any] = {
         "mode": "bilingual",
         "show_partial": True,
         "max_lines": 4,
+        "auto_height": True,
         "opacity": 0.85,
         "font_size_tr": 22,
         "font_size_en": 12,

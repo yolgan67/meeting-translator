@@ -13,6 +13,10 @@ from dataclasses import dataclass
 BAR_BG = "#171c22"
 FG_DIM = "#5c6773"
 
+BAR_H = 26          # baslik cubugu
+TEXT_PADY = 8       # Text widget'inin ust/alt boslugu
+ENTRY_GAP = 10      # replikler arasi bosluk (bos satir yerine paragraf araligi)
+
 MODES = ("bilingual", "tr_only", "en_only")
 MODE_LABELS = {"bilingual": "iki dilli", "tr_only": "sadece TR", "en_only": "sadece EN"}
 
@@ -52,6 +56,7 @@ class Overlay:
         self.hidden = False
         self.global_hotkeys = False
         self.settings_panel = None
+        self.height_capped = False
         self._lines: list[Line] = []
         self._partial: Line | None = None
         self._commands: "queue.Queue[str]" = queue.Queue()
@@ -63,6 +68,7 @@ class Overlay:
         self.root.attributes("-alpha", float(self.cfg.get("opacity", 0.85)))
         self.root.configure(bg=self._bg())
 
+        self.auto_height = bool(self.cfg.get("auto_height", True))
         w = int(self.cfg.get("width", 900))
         h = int(self.cfg.get("height", 260))
         x = (self.root.winfo_screenwidth() - w) // 2
@@ -71,6 +77,7 @@ class Overlay:
 
         self._build_widgets()
         self._apply_styles()
+        self._fit_height()
         self._bind_keys()
         self._register_global_hotkeys()
         self.set_status(FG_DIM, "hazirlaniyor")
@@ -126,7 +133,7 @@ class Overlay:
         self.text = tk.Text(
             self.root, bg=self._bg(), wrap="word", relief="flat", bd=0,
             highlightthickness=0, padx=14, pady=8, cursor="arrow",
-            insertwidth=0, spacing1=2, spacing3=6,
+            insertwidth=0, spacing1=1, spacing3=0,
         )
         self.text.pack(side="top", fill="both", expand=True)
         self.text.configure(state="disabled")
@@ -141,10 +148,12 @@ class Overlay:
         self.text.configure(bg=bg, fg=fg_tr)
         self.text.tag_configure("en", foreground=fg_en, font=("Segoe UI", size_en))
         self.text.tag_configure("tr", foreground=fg_tr,
-                                font=("Segoe UI Semibold", size_tr))
+                                font=("Segoe UI Semibold", size_tr),
+                                spacing3=ENTRY_GAP)
         # Sadece Ingilizce modunda Ingilizce satir ana satir olur: buyuk ve parlak.
         self.text.tag_configure("en_big", foreground=fg_tr,
-                                font=("Segoe UI Semibold", size_tr))
+                                font=("Segoe UI Semibold", size_tr),
+                                spacing3=ENTRY_GAP)
         self.text.tag_configure("clock", foreground=_mix(fg_en, bg, 0.35),
                                 font=("Consolas", 8))
         self.text.tag_configure("en_partial", foreground=_mix(fg_en, bg, 0.45),
@@ -153,6 +162,84 @@ class Overlay:
                                 font=("Segoe UI", size_tr))
         self.mode_label.configure(text=MODE_LABELS.get(self.mode, self.mode))
 
+    def _fit_height(self) -> None:
+        """Pencere yuksekligini max_lines ve yazi boyutuna gore ayarlar.
+
+        Yuksekligi sabit birakinca "ekrandaki satir" ayarinin gorunur bir etkisi
+        olmuyordu: 8 replik tutulsa da pencereye 2-3 tanesi siginiyordu. Alt kenar
+        sabit kalir, pencere yukari dogru buyur.
+        """
+        if not self.auto_height:
+            return
+        # Pencere yuksekligi degisince Tk metni yeniden yerlestirir ve icerik
+        # yuksekligi de degisebilir; olcum-boyutlandirma bir kez yapilinca bir
+        # adim geride kaliyordu. Bir kac tur donerek oturmasini bekliyoruz.
+        for _ in range(3):
+            if not self._fit_height_once():
+                break
+
+    def _fonts(self) -> dict:
+        import tkinter.font as tkfont
+
+        size_tr = int(self.cfg.get("font_size_tr", 22))
+        size_en = int(self.cfg.get("font_size_en", 12))
+        big = tkfont.Font(font=("Segoe UI Semibold", size_tr))
+        return {
+            "tr": big, "en_big": big,
+            "tr_partial": tkfont.Font(font=("Segoe UI", size_tr)),
+            "en": tkfont.Font(font=("Segoe UI", size_en)),
+            "en_partial": tkfont.Font(font=("Segoe UI", size_en)),
+        }
+
+    def _content_height(self) -> int:
+        """Icerigin kaplayacagi pikseli yazi tipi olcusunden hesaplar.
+
+        Tk'nin 'count -ypixels' sayaci ekranda gorunmeyen satirlari eksik
+        olctugu icin (pencere sona kaydirildiginda ustteki replikler
+        yerlestirilmiyor) pencere surekli kisa kaliyordu; bu yuzden genislige
+        gore satir kaydirmasi burada kendimiz hesaplaniyor.
+        """
+        fonts = self._fonts()
+        usable = max(120, self.root.winfo_width() - 2 * 14 - 6)
+        total = 0
+        last = int(self.text.index("end-1c").split(".")[0])
+        for i in range(1, last + 1):
+            start = f"{i}.0"
+            text = self.text.get(start, f"{i}.end")
+            tags = [t for t in self.text.tag_names(start) if t in fonts]
+            font = fonts[tags[-1]] if tags else fonts["tr"]
+            wraps = max(1, -(-font.measure(text) // usable)) if text else 1
+            total += wraps * font.metrics("linespace")
+            if any(t in ("tr", "en_big") for t in self.text.tag_names(start)):
+                total += ENTRY_GAP
+        return total
+
+    def _fit_height_once(self) -> bool:
+        """Bir olcum-boyutlandirma turu; boyut degistiyse True doner."""
+        self.root.update_idletasks()
+        content = self._content_height()
+
+        # Icerik henuz azken pencere tamamen buzusmesin.
+        tr_h = self._fonts()["tr"].metrics("linespace")
+        floor = BAR_H + 2 * TEXT_PADY + int(tr_h * 1.6)
+        need = max(floor, BAR_H + 2 * TEXT_PADY + content + 6)
+
+        screen_h = self.root.winfo_screenheight()
+        limit = int(screen_h * 0.7)
+        target = max(90, min(need, limit))
+        # Ayar penceresi kullaniciya soyleyebilsin: istenen satir sayisi ekrana
+        # sigmiyorsa yazi boyutunu kucultmek gerekir.
+        self.height_capped = need > limit
+
+        cur_h = self.root.winfo_height()
+        # Kucuk dalgalanmalarda pencereyi oynatma (yazi akarken titremesin).
+        if abs(target - cur_h) < 18:
+            return False
+        bottom = self.root.winfo_y() + cur_h
+        y = max(0, bottom - target)
+        self.root.geometry(f"{self.root.winfo_width()}x{target}+{self.root.winfo_x()}+{y}")
+        return True
+
     def apply_settings(self, values: dict) -> None:
         """Ayar penceresinden gelen degerleri aninda uygular."""
         old_mode = self.mode
@@ -160,11 +247,13 @@ class Overlay:
         self.mode = self.cfg.get("mode", "bilingual")
         self.max_lines = int(self.cfg.get("max_lines", 4))
         self.root.attributes("-alpha", float(self.cfg.get("opacity", 0.85)))
+        self.auto_height = bool(self.cfg.get("auto_height", self.auto_height))
         self._apply_styles()
         del self._lines[: max(0, len(self._lines) - self.max_lines)]
         if not self.cfg.get("show_partial", True):
             self._partial = None
         self._render()
+        self._fit_height()
         if self.mode != old_mode and self.on_mode_change:
             self.on_mode_change(self.mode)
 
@@ -232,12 +321,14 @@ class Overlay:
         self._lines.append(Line(clock, en, tr))
         del self._lines[: max(0, len(self._lines) - self.max_lines)]
         self._render()
+        self._fit_height()
 
     def set_partial(self, clock: str, en: str, tr: str) -> None:
         if not self.cfg.get("show_partial", True):
             return
         self._partial = Line(clock, en, tr)
         self._render()
+        self._fit_height()
 
     def _render(self) -> None:
         self.text.configure(state="normal")
