@@ -68,6 +68,11 @@ ui:
   # degistirilebilir ve "Kaydet" ile buraya geri yazilir.
   mode: bilingual   # bilingual (EN+TR) | tr_only | en_only
   show_partial: true   # kesinlesmemis ara altyaziyi soluk renkte goster
+  # Ara altyazi cevrilsin mi? Varsayilan false: canli satir Ingilizce akar ve
+  # yalnizca UZAR (kararli onek); Turkce cumle bitince bir kez basilir. true
+  # yapilirsa her guncellemede Turkce bastan kurulur, okumak cok zorlasir
+  # (olculdu: 7 guncellemede 7 kez tamamen degisti).
+  partial_translate: false
   max_lines: 2   # ekranda gosterilen replik sayisi (pencere yuksekligini belirler)
   auto_height: false   # false ise yukseklik asagidaki 'height' degerinde sabit kalir
   max_height_ratio: 0.7 # pencere en fazla ekran yuksekliginin bu karina cikar

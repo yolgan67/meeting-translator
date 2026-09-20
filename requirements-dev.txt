@@ -1,0 +1,3 @@
+# Sadece gelistirme/olcum icin (uygulamayi calistirmak icin gerekli DEGIL)
+# Kurulum: .venv\Scripts\python -m pip install -r requirements-dev.txt
+sacrebleu>=2.4

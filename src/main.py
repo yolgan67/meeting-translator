@@ -21,6 +21,7 @@ import numpy as np
 from .asr import Transcriber, configure_threads
 from .config import load_config, resolve_path
 from .session_log import SessionLog, fmt_clock
+from .stability import StableText
 from .translate import BaseEngine, NullEngine, TranslationError, build_engine
 
 # pythonw ile (konsolsuz) baslatildiginda stdout/stderr None veya gecersiz olur;
@@ -97,6 +98,11 @@ class Pipeline:
         self.is_paused = lambda: False
         self.partial_logprob = float(cfg["asr"].get("partial_min_avg_logprob", -0.6))
         self.partial_beam = int(cfg["translate"].get("partial_beam_size", 1))
+        # Ara altyazi: metin yalnizca uzar (kararli onek) ve varsayilan olarak
+        # cevrilmez. Her hipotezde Turkce'yi bastan kurmak ekrani okunamaz
+        # hale getiriyordu (olculdu: 7 guncellemede 7 kez tamamen degisti).
+        self.partial_translate = bool(cfg["ui"].get("partial_translate", False))
+        self.stable_partial = StableText()
         # "Sadece Ingilizce" modunda ceviri hem gereksiz hem pahali.
         self.translate_enabled = cfg["ui"].get("mode", "bilingual") != "en_only"
         self._last_line_ts = 0.0
@@ -221,8 +227,16 @@ class Pipeline:
             if not text:
                 continue
 
+            if utt.partial:
+                # Kararli onek: sadece son iki hipotezin ortak kismi gosterilir.
+                text = self.stable_partial.update(text)
+                if not text:
+                    continue
+            else:
+                self.stable_partial.reset()
+
             translated = ""
-            if self.translate_enabled:
+            if self.translate_enabled and (not utt.partial or self.partial_translate):
                 try:
                     # Ara altyazi hizli (greedy), kesin altyazi kaliteli (beam):
                     # beam=4 cumle basina ~25 ms ekliyor ama gercek ceviri

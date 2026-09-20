@@ -51,6 +51,7 @@ DEFAULTS: dict[str, Any] = {
     "ui": {
         "mode": "bilingual",
         "show_partial": True,
+        "partial_translate": False,
         "max_lines": 4,
         "auto_height": True,
         "max_height_ratio": 0.7,

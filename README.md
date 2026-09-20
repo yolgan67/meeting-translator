@@ -7,8 +7,9 @@ internet, hesap, abonelik veya API anahtarı gerekmez. Ses kaydı tutulmaz, sade
 - Sistem ses çıkışını dinler (WASAPI loopback) → **mikrofonun kaydedilmez**, sadece karşı taraf
 - Ekranın altında her zaman üstte duran yarı saydam altyazı penceresi
 - Üstte küçük İngilizce orijinal, altta büyük Türkçe çeviri
-- **Ara altyazı:** cümlenin bitmesini beklemeden, konuşma sürerken ~1,2 saniyede bir
-  o ana kadarki metin soluk renkte gösterilir; cümle bitince kesin metinle değişir
+- **Ara altyazı:** cümle bitmeden, konuşma sürerken canlı İngilizce satır akar.
+  Bu satır **yalnızca uzar**, kendini yeniden yazmaz (kararlı önek yöntemi).
+  Türkçe çeviri cümle bitince **bir kez** basılır ve yerinde kalır.
 - `logs/<tarih_saat>/transcript.md` ve `transcript.jsonl`
 
 ## Kullanım
@@ -133,6 +134,41 @@ PyTorch/transformers **kurulmaz**; her iki model de CTranslate2 üzerinde çalı
 `base.en` bu CPU'da gerçek zamanın 14 katı hızlı çalışıyor; doğruluk yetmezse
 `-Model small.en` hâlâ rahat gerçek zamanlıdır (yaklaşık 3 kat yavaş).
 
+## "En iyi model" nasıl belirleniyor?
+
+Göz kararıyla değil. Referans çevirileri olan standart bir test seti ve otomatik
+puanlarla:
+
+- **Test seti:** FLORES-200 dev (Meta) — 997 cümle, insan çevirisiyle; makine
+  çevirisi karşılaştırmalarının fiili standardı.
+- **Puanlar:** chrF2 ve BLEU (`sacrebleu`). chrF2 karakter n-gram tabanlı olduğu
+  için Türkçe gibi eklemeli dillerde BLEU'dan güvenilirdir. İkisi de yüksek = iyi.
+- **Hız ve RAM** de karara girer: gerçek zamanlı bir uygulamada 2 puanlık kalite
+  artışı 6 kat yavaşlamaya değmez.
+
+```powershell
+.\.venv\Scripts\python -m pip install -r requirements-dev.txt   # sacrebleu (bir kez)
+.\.venv\Scripts\python tools\bench_mt.py --compare              # FLORES-200, 200 cümle
+.\.venv\Scripts\python tools\bench_mt.py --domain               # toplantı cümleleri
+```
+
+Bu projede ölçülenler (FLORES-200 dev, ilk 200 cümle, aynı makine):
+
+| Model / ayar | chrF2 | BLEU | ms/cümle | RAM |
+|---|---|---|---|---|
+| **opus-mt-tc-big-en-tr, beam 4** (kullanılan) | **61,67** | **33,73** | 290 | ~250 MB |
+| opus-mt-tc-big-en-tr, beam 1 | 60,46 | 31,37 | 244 | ~250 MB |
+| NLLB-200 distilled 600M, beam 4 | 54,35 | 25,06 | 1737 | ~710 MB |
+
+Yani "daha büyük model daha iyi çevirir" burada doğru değil: opus-mt özellikle
+İngilizce→Türkçe için eğitilmiş, NLLB ise 200 dili birlikte öğrenmiş. NLLB hem
+7 chrF2 puan geride hem 6 kat yavaş hem 3 kat fazla RAM istiyor.
+
+**Bu testin sınırı:** FLORES cümleleri Wikipedia üslubunda, toplantı jargonu
+içermez — nitekim deyim sadeleştirme katmanı FLORES puanını hiç değiştirmiyor
+(60,46 / 31,37 aynı kalıyor). Alan kalitesi ancak alan verisiyle ölçülür; o
+yüzden aşağıdaki deyim tablosu elle karşılaştırmayla çıkarıldı.
+
 ## Çeviri kalitesi
 
 Ölçtüğüm iki ana kayıp kaynağı ve yapılanlar:
@@ -194,6 +230,7 @@ En çok işe yarayacak olanlar:
 | `segmenter.partial_every_ms` | Ara altyazı sıklığı (600) | CPU kasıyorsa 1000-1500 yap veya `0` ile kapat |
 | `segmenter.partial_window_s` | Ara altyazıda çözülen son N saniye (4,0) | Daha çok bağlam istiyorsan artır |
 | `ui.show_partial` | Ara altyazı açık/kapalı | Soluk satır dikkatini dağıtıyorsa `false` |
+| `ui.partial_translate` | Ara satır da çevrilsin mi (varsayılan `false`) | `true` yaparsan her güncellemede Türkçe baştan kurulur; ölçüldü: 7 güncellemede 7 kez tamamen değişti, okunamaz hale geliyor |
 | `asr.min_avg_logprob` | Uydurma cümle filtresi (−0,85) | Sessizlikte saçma altyazı çıkıyorsa −0,7'ye çek |
 | `asr.partial_min_avg_logprob` | Ara altyazı filtresi (−0,6) | Ara satırlarda saçmalık varsa −0,4'e çek |
 | `segmenter.vad_abs_floor` | Mutlak ses eşiği (0,0015) | Çok kısık sesli konuşmacılarda düşür |
