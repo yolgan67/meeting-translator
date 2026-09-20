@@ -133,6 +133,46 @@ PyTorch/transformers **kurulmaz**; her iki model de CTranslate2 üzerinde çalı
 `base.en` bu CPU'da gerçek zamanın 14 katı hızlı çalışıyor; doğruluk yetmezse
 `-Model small.en` hâlâ rahat gerçek zamanlıdır (yaklaşık 3 kat yavaş).
 
+## Çeviri kalitesi
+
+Ölçtüğüm iki ana kayıp kaynağı ve yapılanlar:
+
+**1) Beam search kapalıydı** (`beam_size: 1`). Gerçek hatalara yol açıyordu; beam 4
+düzeltti ve **gecikme artmadı** (cümle başına 128 ms → 125 ms, çünkü çıktılar da
+kısalıyor). beam 8'in belirgin üstünlüğü görülmedi.
+
+**2) Toplantı deyimleri birebir çevriliyordu.** opus-mt iş jargonunda anlamsız
+Türkçe üretiyor; çeviriden önce sade İngilizce'ye çevirme katmanı eklendi
+(`src/phrases.py`, `translate.simplify_idioms`). Ekranda ve transkriptte gösterilen
+İngilizce metin değişmez, sadeleştirme yalnızca çeviri motoruna giden kopyada olur.
+
+| İngilizce | Önce | Sonra |
+|---|---|---|
+| align on the **scope** | ...**dürbün** üzerinde hizaya girmeliyiz | ...**kapsam** konusunda anlaşmamız gerekiyor |
+| **touch base** after deploy | üsse dokunalım | kısaca konuşalım |
+| that's **low-hanging fruit** | düşük asılı meyve | en kolay iş bu |
+| **double-click** on that | çift tıklayabilir misiniz | daha ayrıntılı açıklayabilir misiniz |
+| do you have **bandwidth** | bant genişliğiniz var mı | zamanınız var mı |
+| **circle back** tomorrow | tekrar çember çizeceğim | yarın bu konuya dönelim |
+| **park that** item | o eşyayı park edelim | bu öğeyi erteleyelim |
+
+Kendi terimlerini `config.yaml` → `translate.phrase_map` ile ekleyebilirsin,
+örn. `{"our deck": "our slides"}`.
+
+### Daha da iyisi isteniyorsa
+
+| Yol | Kazanç | Bedeli (ölçülen) |
+|---|---|---|
+| `asr.initial_prompt`'a jargon yaz (ürün adları, kısaltmalar) | Whisper terimleri doğru yazar | yok |
+| `translate.engine: deepl` + DeepL Free anahtarı | YouTube/Google seviyesine en yakın çeviri | internet gerekir, metin dışarı gider, anahtar için kart doğrulaması |
+| `asr.model: small.en` | transkript doğruluğu artar | **çağrı başına 3,8–4,2 sn** (base.en 0,7–1,4 sn) → gecikme 4 katına çıkar, önerilmez |
+| `asr.beam_size: 3-5` | — | ölçtüm: kazanç yok, gürültülü sesde **daha kötü** ("my fellow" → "am I fellow") |
+
+YouTube'daki çeviri Google Translate'tir: hem devasa bir çeviri modeli hem de çok
+daha büyük bir konuşma tanıma modeli kullanır ve gerçek zamanlı olmak zorunda
+değildir. Tamamen yerel ve ~1 sn gecikmeli bir sistemde ona birebir yetişmek
+mümkün değil; en yakın nokta DeepL bağlamaktır.
+
 ## Ayarlar (`config.yaml`)
 
 En çok işe yarayacak olanlar:
@@ -152,6 +192,9 @@ En çok işe yarayacak olanlar:
 | `ui.font_size_tr` / `ui.opacity` / `ui.color_tr` | Yazı boyutu / saydamlık / renk | Dişli simgesinden canlı değiştirilebilir |
 | `ui.max_lines` / `ui.auto_height` | Ekranda kaç replik / pencerenin kendini boyutlaması | Sabit yükseklik istersen `auto_height: false` |
 | `translate.engine` | `local` / `deepl` / `none` | DeepL anahtarın varsa `deepl` (daha iyi çeviri, internet gerekir) |
+| `translate.beam_size` | Çeviri arama genişliği (4) | 1 daha hızlı ama belirgin daha hatalı |
+| `translate.simplify_idioms` / `phrase_map` | Deyim sadeleştirme | Kendi jargonunu eklemek için |
+| `asr.initial_prompt` | Whisper'a terim ipucu | Ürün/teknoloji adları yanlış yazılıyorsa |
 
 ## Sorun giderme
 

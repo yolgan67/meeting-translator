@@ -41,6 +41,9 @@ class Transcriber:
         self.min_avg_logprob = float(cfg.get("min_avg_logprob", -0.85))
         self.max_no_speech_prob = float(cfg.get("max_no_speech_prob", 0.5))
         self.vad_filter = bool(cfg.get("vad_filter", False))
+        # Alan sozlugu: Whisper'a jargon/ozel isim ipucu verir (ornegin urun
+        # adlari, kisaltmalar). Bos birakilabilir.
+        self.initial_prompt = (cfg.get("initial_prompt") or "").strip() or None
         self.model = WhisperModel(
             cfg["model"],
             device="cpu",
@@ -59,6 +62,7 @@ class Transcriber:
             vad_filter=self.vad_filter,
             without_timestamps=True,
             no_speech_threshold=0.6,
+            initial_prompt=self.initial_prompt,
         )
         parts: list[str] = []
         for seg in segments:

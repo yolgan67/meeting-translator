@@ -17,6 +17,9 @@ asr:
   cpu_threads: 3        # 4 cekirdekli CPU'da 1 cekirdek Teams'e birakilir
   beam_size: 1          # 1 = greedy, en hizli
   language: en
+  # Jargon/ozel isim ipucu (bos birakilabilir):
+  # initial_prompt: "Salesforce, Apex, sandbox, deployment, sprint, backlog"
+  initial_prompt: ""
   # Halusinasyon filtresi (olculen: gercek konusma -0.07..-0.40, uydurma -1.03..-1.61)
   min_avg_logprob: -0.85
   partial_min_avg_logprob: -0.6   # ara altyazilar icin daha siki esik
@@ -44,6 +47,15 @@ segmenter:
 
 translate:
   engine: local         # local | deepl | none
+  # Olculdu: beam 1 -> 4 gercek hatalari duzeltiyor ("scope" artik "durbun"
+  # degil "kapsam"), maliyeti cumle basina ~25 ms. beam 8 belirgin fark yapmadi.
+  beam_size: 4
+  partial_beam_size: 1  # ara altyazida hiz onemli, greedy kalir
+  # Toplanti deyimleri cevirmeden once sade Ingilizce'ye cevrilir; yoksa
+  # "circle back" -> "tekrar cember cizecegim" gibi sacma ceviriler cikiyor.
+  # Liste: src/phrases.py. Buraya kendi terimlerini ekleyebilirsin.
+  simplify_idioms: true
+  phrase_map: {}        # ornek: {"our deck": "our slides"}
   model_dir: models/opus-mt-en-tr-ct2
   source_prefix: ""     # cok hedefli modeller icin ornegin ">>tur<<"
   deepl_api_key: ""     # engine: deepl secilirse doldurulur (opsiyonel, ucretsiz kota)

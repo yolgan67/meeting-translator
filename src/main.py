@@ -96,6 +96,7 @@ class Pipeline:
         self.segmenter = None
         self.is_paused = lambda: False
         self.partial_logprob = float(cfg["asr"].get("partial_min_avg_logprob", -0.6))
+        self.partial_beam = int(cfg["translate"].get("partial_beam_size", 1))
         # "Sadece Ingilizce" modunda ceviri hem gereksiz hem pahali.
         self.translate_enabled = cfg["ui"].get("mode", "bilingual") != "en_only"
         self._last_line_ts = 0.0
@@ -223,7 +224,12 @@ class Pipeline:
             translated = ""
             if self.translate_enabled:
                 try:
-                    translated = self.engine.translate(text)
+                    # Ara altyazi hizli (greedy), kesin altyazi kaliteli (beam):
+                    # beam=4 cumle basina ~25 ms ekliyor ama gercek ceviri
+                    # hatalarini duzeltiyor.
+                    translated = self.engine.translate(
+                        text, beam_size=self.partial_beam if utt.partial else None
+                    )
                 except Exception as exc:
                     print(f"[hata] ceviri: {exc}")
 

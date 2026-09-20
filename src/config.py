@@ -22,6 +22,7 @@ DEFAULTS: dict[str, Any] = {
         "partial_min_avg_logprob": -0.6,
         "max_no_speech_prob": 0.5,
         "vad_filter": False,
+        "initial_prompt": "",
     },
     "segmenter": {
         "silence_ms": 700,
@@ -41,6 +42,10 @@ DEFAULTS: dict[str, Any] = {
         "model_dir": "models/opus-mt-en-tr-ct2",
         "source_prefix": "",
         "deepl_api_key": "",
+        "beam_size": 4,
+        "partial_beam_size": 1,
+        "simplify_idioms": True,
+        "phrase_map": {},
     },
     "ui": {
         "mode": "bilingual",
