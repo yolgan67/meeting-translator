@@ -198,6 +198,26 @@ class Overlay:
             "en_partial": tkfont.Font(font=("Segoe UI", size_en)),
         }
 
+    def _reserved_height(self) -> int:
+        """max_lines replik icin ayrilacak yer (icerik henuz gelmemis olsa da).
+
+        Yuksekligi yalnizca mevcut icerige gore hesaplamak ayarin aninda etki
+        etmemesine yol aciyordu: 6 secildiginde elde 3 replik varsa pencere
+        buyumuyor, etki ancak replikler birikince goruluyordu. Bu yuzden yer
+        her zaman max_lines kadar replige gore ayrilir.
+        """
+        fonts = self._fonts()
+        tr_h = fonts["tr"].metrics("linespace")
+        en_h = fonts["en"].metrics("linespace")
+        # Tipik toplanti cumlesi buyuk puntoda bir satiri asiyor: 1,5 satir payi.
+        per_entry = tr_h * 1.5 + ENTRY_GAP
+        if self.mode == "bilingual":
+            per_entry += en_h * 1.2
+        total = per_entry * self.max_lines
+        if self.cfg.get("show_partial", True):
+            total += tr_h * 1.2  # ara altyazi satiri
+        return int(total)
+
     def _content_height(self) -> int:
         """Icerigin kaplayacagi pikseli yazi tipi olcusunden hesaplar.
 
@@ -213,7 +233,12 @@ class Overlay:
         for i in range(1, last + 1):
             start = f"{i}.0"
             text = self.text.get(start, f"{i}.end")
-            tags = [t for t in self.text.tag_names(start) if t in fonts]
+            names = self.text.tag_names(start)
+            # Satirin basinda "clock" etiketi var; yazi tipini metnin kendi
+            # etiketinden sec, yoksa satirin ilerisine bak.
+            tags = [t for t in names if t in fonts]
+            if not tags:
+                tags = [t for t in self.text.tag_names(f"{i}.end-1c") if t in fonts]
             font = fonts[tags[-1]] if tags else fonts["tr"]
             wraps = max(1, -(-font.measure(text) // usable)) if text else 1
             total += wraps * font.metrics("linespace")
@@ -224,15 +249,14 @@ class Overlay:
     def _fit_height_once(self) -> bool:
         """Bir olcum-boyutlandirma turu; boyut degistiyse True doner."""
         self.root.update_idletasks()
-        content = self._content_height()
-
-        # Icerik henuz azken pencere tamamen buzusmesin.
-        tr_h = self._fonts()["tr"].metrics("linespace")
-        floor = BAR_H + 2 * TEXT_PADY + int(tr_h * 1.6)
-        need = max(floor, BAR_H + 2 * TEXT_PADY + content + 6)
+        # Ayarin aninda etki etmesi icin max_lines kadar yer ayrilir; icerik
+        # beklenenden uzunsa (cok satira kayan cumleler) olculen deger kazanir,
+        # boylece metin kirpilmaz.
+        body = max(self._reserved_height(), self._content_height())
+        need = BAR_H + 2 * TEXT_PADY + body + 6
 
         screen_h = self.root.winfo_screenheight()
-        limit = int(screen_h * 0.7)
+        limit = int(screen_h * float(self.cfg.get("max_height_ratio", 0.7)))
         target = max(90, min(need, limit))
         # Ayar penceresi kullaniciya soyleyebilsin: istenen satir sayisi ekrana
         # sigmiyorsa yazi boyutunu kucultmek gerekir.

@@ -51,10 +51,11 @@ translate:
 ui:
   # Asagidaki ayarlar uygulama icindeki dis simgesinden (sag ust) canli
   # degistirilebilir ve "Kaydet" ile buraya geri yazilir.
-  mode: bilingual       # bilingual (EN+TR) | tr_only | en_only
-  show_partial: true    # kesinlesmemis ara altyaziyi soluk renkte goster
-  max_lines: 4          # ekranda gosterilen replik sayisi (pencere yuksekligini belirler)
+  mode: bilingual   # bilingual (EN+TR) | tr_only | en_only
+  show_partial: true   # kesinlesmemis ara altyaziyi soluk renkte goster
+  max_lines: 2   # ekranda gosterilen replik sayisi (pencere yuksekligini belirler)
   auto_height: true     # false ise yukseklik asagidaki 'height' degerinde sabit kalir
+  max_height_ratio: 0.7 # pencere en fazla ekran yuksekliginin bu karina cikar
   opacity: 0.85
   font_size_tr: 22
   font_size_en: 12
