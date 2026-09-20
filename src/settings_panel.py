@@ -106,6 +106,10 @@ class SettingsPanel:
         tk.Button(btns, text="Kaydet", command=self._save, bg="#2d7ff9", fg="white",
                   relief="flat", font=("Segoe UI", 9), padx=14, cursor="hand2",
                   activebackground="#1f68d6", activeforeground="white").pack(side="left")
+        tk.Button(btns, text="Pencereyi ortala", command=self._center, bg="#273039",
+                  fg=PANEL_FG, relief="flat", font=("Segoe UI", 9), padx=10,
+                  cursor="hand2", activebackground="#313c46",
+                  activeforeground=PANEL_FG).pack(side="left", padx=6)
         tk.Button(btns, text="Varsayilana don", command=self._reset, bg="#273039",
                   fg=PANEL_FG, relief="flat", font=("Segoe UI", 9), padx=10,
                   cursor="hand2", activebackground="#313c46",
@@ -194,6 +198,12 @@ class SettingsPanel:
             self._say(f"kaydedildi -> {path.name}")
         except Exception as exc:
             self._say(f"kaydedilemedi: {exc}")
+
+    def _center(self) -> None:
+        self.overlay.show()
+        self.overlay.center()
+        self._place_near_overlay()
+        self._say("pencere ekranin altina ortalandi")
 
     def _reset(self) -> None:
         from .config import DEFAULTS

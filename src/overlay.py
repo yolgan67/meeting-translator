@@ -7,8 +7,15 @@ Gorunum ayarlari sag ustteki dis simgesinden canli degistirilebilir
 from __future__ import annotations
 
 import queue
+import tempfile
 import tkinter as tk
 from dataclasses import dataclass
+from pathlib import Path
+
+# "Geri getir" bayragi: calisan ornek bu dosyayi gozler, ikinci kez baslatilan
+# uygulama (--show) dosyayi yazip cikar. Global kisayol kaydolmazsa gizlenen
+# pencerenin geri getirilmesinin tek yolu bu; gizli pencere odak alamiyor.
+SHOW_FLAG = Path(tempfile.gettempdir()) / "meeting-translator-show.flag"
 
 BAR_BG = "#171c22"
 FG_DIM = "#5c6773"
@@ -364,8 +371,39 @@ class Overlay:
         if self.hidden:
             self.root.withdraw()
         else:
-            self.root.deiconify()
-            self.root.attributes("-topmost", True)
+            self.show()
+
+    def show(self) -> None:
+        """Pencereyi gorunur yapar ve ekran disinda kaldiysa geri alir."""
+        self.hidden = False
+        self.root.deiconify()
+        self.root.attributes("-topmost", True)
+        self._ensure_on_screen()
+
+    def center(self) -> None:
+        """Pencereyi ekranin altina, ortaya yerlestirir."""
+        self.root.update_idletasks()
+        w, h = self.root.winfo_width(), self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() - w) // 2
+        y = max(0, self.root.winfo_screenheight() - h - int(self.cfg.get("margin_bottom", 80)))
+        self.root.geometry(f"{w}x{h}+{x}+{y}")
+
+    def _ensure_on_screen(self) -> None:
+        """Pencere surukleyerek ekran disina tasindiysa geri ceker.
+
+        Baslik cubugu olmadigi icin tamamen ekran disina cikan pencere fareyle
+        yakalanamaz; en az bir kismi her zaman ekranda kalmali.
+        """
+        self.root.update_idletasks()
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        w, h = self.root.winfo_width(), self.root.winfo_height()
+        x, y = self.root.winfo_x(), self.root.winfo_y()
+        # Baslik cubugundan tutup surukleyebilmek icin bu kadari ekranda kalsin.
+        margin = 240
+        nx = min(max(x, margin - w), sw - margin)
+        ny = min(max(y, 0), sh - BAR_H - 4)
+        if (nx, ny) != (x, y):
+            self.root.geometry(f"{w}x{h}+{nx}+{ny}")
 
     def _quit(self) -> None:
         if self.on_quit:
@@ -407,6 +445,17 @@ class Overlay:
             elif item[0] == "status":
                 _, color, text = item
                 self.set_status(color, text)
+
+        # Saniyede bir "geri getir" bayragina bak (maliyeti ihmal edilebilir).
+        self._poll_count = getattr(self, "_poll_count", 0) + 1
+        if self._poll_count % 10 == 0 and SHOW_FLAG.exists():
+            try:
+                SHOW_FLAG.unlink()
+            except OSError:
+                pass
+            self.show()
+            self.center()
+            self.set_status("#3ddc84", "pencere geri getirildi")
 
         self.root.after(100, self._poll)
 

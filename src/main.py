@@ -250,7 +250,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--engine", choices=["local", "deepl", "none"], help="ceviri motoru")
     ap.add_argument("--duration", type=float,
                     help="belirtilen saniye sonunda kendiliginden kapan (test icin)")
+    ap.add_argument("--show", action="store_true",
+                    help="calisan ornegin altyazi penceresini geri getir ve cik")
     args = ap.parse_args(argv)
+
+    if args.show:
+        from .overlay import SHOW_FLAG
+
+        SHOW_FLAG.write_text("show", encoding="utf-8")
+        print("Altyazi penceresi geri getiriliyor (calisan uygulama 1 sn icinde gosterir).")
+        print("Uygulama zaten kapaliysa bu dosya bir sonraki acilista silinir:")
+        print(f"  {SHOW_FLAG}")
+        return 0
 
     cfg = load_config(args.config)
     if args.model:
@@ -277,6 +288,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         from .overlay import Overlay
 
+        from .overlay import SHOW_FLAG
+
+        SHOW_FLAG.unlink(missing_ok=True)  # onceki oturumdan kalan bayrak
         overlay = Overlay(cfg["ui"], pipe.ui_q, on_quit=pipe.stop,
                           on_mode_change=pipe.on_mode_change)
         pipe.is_paused = lambda: overlay.paused

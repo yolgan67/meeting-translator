@@ -58,6 +58,26 @@ Türkçeye geri dönünce model otomatik yeniden yüklenir (~1 sn).
 | `Ctrl+Shift+P` | Duraklat / devam |
 | `Ctrl+Shift+Q` | Çık (transkripti yazar) |
 
+Pencere kaybolursa `Altyazi-Geri-Getir.bat` (aşağıya bak).
+
+### Altyazı ekrandan kayboldu mu?
+
+Sırayla dene:
+
+1. **`Ctrl+Shift+H`** — gizle/göster anahtarı. Pencere gizliyken de çalışır
+   (global kısayol); durum çubuğunda "kısayollar sadece pencere odaktayken"
+   yazmıyorsa kayıtlıdır.
+2. **`Altyazi-Geri-Getir.bat`** dosyasına çift tıkla — çalışan uygulamaya
+   "pencereyi göster ve ekranın altına ortala" der, 1 saniye içinde geri gelir.
+   Global kısayol kaydolamadıysa (başka bir uygulama klavye kancasını almışsa)
+   tek yol budur: gizlenmiş pencere odak alamadığı için kısayol tuşları ona ulaşmaz.
+3. Ayarlar penceresindeki **"Pencereyi ortala"** düğmesi — pencereyi sürükleyip
+   ekran dışına taşıdıysan işe yarar.
+
+Pencere artık ekran dışına tamamen taşınamaz: en az 240 px'i görünür kalacak
+şekilde geri çekilir (başlık çubuğu olmadığı için tutamayacağın bir pencere
+kurtarılamazdı).
+
 **Ekran paylaşırken:** altyazı penceresi her zaman üstte olduğu için tüm ekranı paylaşıyorsan
 karşı taraf da görür. `Ctrl+Shift+H` ile gizle. Tek pencere paylaşımında sorun yok.
 
