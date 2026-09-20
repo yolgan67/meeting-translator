@@ -20,7 +20,7 @@ import numpy as np
 
 from .asr import Transcriber, configure_threads
 from .config import load_config, resolve_path
-from .session_log import SessionLog, fmt_clock
+from .session_log import SessionLog, cleanup_old_sessions, fmt_clock
 from .stability import StableText
 from .translate import BaseEngine, NullEngine, TranslationError, build_engine
 
@@ -342,6 +342,11 @@ def main(argv: list[str] | None = None) -> int:
 
         SHOW_FLAG.unlink(missing_ok=True)  # onceki oturumdan kalan bayrak
         write_pid()
+
+    silinen = cleanup_old_sessions(resolve_path(cfg["log"]["dir"]),
+                                   int(cfg["log"].get("keep_days", 0)))
+    if silinen:
+        print(f"[bilgi] {silinen} eski oturum klasoru silindi (log.keep_days)")
 
     pipe = Pipeline(cfg, console=args.console)
     pipe.load_models()

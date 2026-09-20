@@ -88,3 +88,6 @@ ui:
 
 log:
   dir: logs
+  # Kac gun once biten oturumlar silinsin? 0 = hicbir sey silinmez (varsayilan).
+  # Transkriptler toplanti icerigi oldugu icin otomatik silme bilerek kapali.
+  keep_days: 0

@@ -268,6 +268,32 @@ RAM'i yarılar, çeviri kalitesi bir tık düşer).
 **Kısayollar çalışmıyor:** `keyboard` kütüphanesi global kısayol kuramadıysa durum çubuğunda
 "kısayollar sadece pencere odaktayken" yazar; pencereye tıklayınca kısayollar çalışır.
 
+## Loglar nasıl tutuluyor
+
+İki ayrı şey var:
+
+| Dosya | Davranış |
+|---|---|
+| `logs/app.log` | **Tek dosya, eklemeli.** Her başlatmada `===== tarih saat =====` başlığı eklenir; model yükleme, ses cihazı, uyarılar buraya yazılır. 1 MB'ı geçince `app.log.1` olarak devredilir. |
+| `logs/<YYYY-MM-DD_HHMMSS>/transcript.jsonl` | **Her oturum için yeni klasör.** Replik diske anında yazılır, uygulama çökse bile o ana kadarki kayıt durur. |
+| `logs/<...>/transcript.md` | Okunur transkript. **Her replikte yeniden yazılır**, yani temiz kapanmasa da diskte olur. |
+
+- Hiç konuşma yakalanmayan oturum klasörü **kapanışta silinir** (boş klasör birikmez).
+- Klasör adı saniye içerir; aynı dakika içinde iki kez başlatmak artık iki ayrı
+  klasör açar. (Önceden dakika çözünürlüğü vardı: ikinci oturum birincinin
+  `transcript.md`'sini eziyordu — ölçülüp düzeltildi.)
+- Transkriptler **kendiliğinden silinmez**. Otomatik temizlik istersen
+  `config.yaml` → `log.keep_days: 30` gibi bir değer ver (0 = kapalı, varsayılan).
+- Eski bir oturumun `transcript.md`'si eksikse (uygulama çökmüş/öldürülmüşse)
+  `jsonl`'den kurtarılır:
+
+```powershell
+.\.venv\Scripts\python tools\rebuild_md.py           # eksik olanlari tamamla
+.\.venv\Scripts\python tools\rebuild_md.py --all    # hepsini yenile
+```
+
+`logs/` klasörü `.gitignore` içinde — toplantı içeriği depoya gitmez.
+
 ## RAM darsa
 
 Uygulama ~550 MB ister. Makinede boş yer azsa:

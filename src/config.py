@@ -65,7 +65,7 @@ DEFAULTS: dict[str, Any] = {
         "height": 260,
         "margin_bottom": 80,
     },
-    "log": {"dir": "logs"},
+    "log": {"dir": "logs", "keep_days": 0},
 }
 
 
