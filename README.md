@@ -34,7 +34,10 @@ Altyazı çubuğunun sağ üstündeki **dişli simgesine** (veya `Ctrl+Shift+S`)
 - **Görünüm modu:** iki dilli / sadece Türkçe / **sadece İngilizce**
 - **Yazı boyutu:** Türkçe ve İngilizce satırlar için ayrı ayrı
 - **Renkler:** Türkçe yazı, İngilizce yazı, arka plan (renk seçici ile)
-- **Saydamlık**, **ekranda kaç replik** dursun, ara altyazı açık/kapalı
+- **Pencere genişliği ve yüksekliği** (kaydırıcı) — yükseklik kaydırıcısını
+  oynatınca otomatik boyutlama kendiliğinden kapanır, pencere senin verdiğin
+  boyda kalır
+- **Saydamlık**, tutulan replik sayısı, ara altyazı açık/kapalı
 
 Pencere yüksekliği replik sayısına ve yazı boyutuna göre kendini ayarlar (alt kenar
 sabit kalır, yukarı doğru büyür). İstediğin sayı ekrana sığmıyorsa ayar penceresi
@@ -64,15 +67,16 @@ Pencere kaybolursa `Altyazi-Geri-Getir.bat` (aşağıya bak).
 
 Sırayla dene:
 
-1. **`Ctrl+Shift+H`** — gizle/göster anahtarı. Pencere gizliyken de çalışır
-   (global kısayol); durum çubuğunda "kısayollar sadece pencere odaktayken"
-   yazmıyorsa kayıtlıdır.
-2. **`Altyazi-Geri-Getir.bat`** dosyasına çift tıkla — çalışan uygulamaya
-   "pencereyi göster ve ekranın altına ortala" der, 1 saniye içinde geri gelir.
-   Global kısayol kaydolamadıysa (başka bir uygulama klavye kancasını almışsa)
-   tek yol budur: gizlenmiş pencere odak alamadığı için kısayol tuşları ona ulaşmaz.
+1. **`Ctrl+Shift+H`** — gizle/göster anahtarı, klavyeden. Pencere gizliyken de
+   çalışır; test edildi (gerçek tarama kodlu tuş enjeksiyonuyla): gizleme ve geri
+   getirme, `Ctrl+Shift+L` (mod) ve `Ctrl+Shift+S` (ayarlar) hepsi tetikleniyor.
+   Durum çubuğunda "kısayollar sadece pencere odaktayken" yazıyorsa global kayıt
+   olmamış demektir; o zaman 2. yolu kullan.
+2. **`Altyazi-Geri-Getir.bat`** dosyasına çift tıkla. İki durumu da halleder:
+   - Uygulama **açıksa**: pencereyi gösterir ve ekranın altına ortalar (~1 sn).
+   - Uygulama **kapalıysa**: uygulamayı baştan başlatır.
 3. Ayarlar penceresindeki **"Pencereyi ortala"** düğmesi — pencereyi sürükleyip
-   ekran dışına taşıdıysan işe yarar.
+   kenara ittiysen.
 
 Pencere artık ekran dışına tamamen taşınamaz: en az 240 px'i görünür kalacak
 şekilde geri çekilir (başlık çubuğu olmadığı için tutamayacağın bir pencere

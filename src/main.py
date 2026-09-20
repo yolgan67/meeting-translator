@@ -23,6 +23,15 @@ from .config import load_config, resolve_path
 from .session_log import SessionLog, fmt_clock
 from .translate import BaseEngine, NullEngine, TranslationError, build_engine
 
+# pythonw ile (konsolsuz) baslatildiginda stdout/stderr None olabilir; o zaman
+# her print cagrisi uygulamayi cokertir.
+if sys.stdout is None or sys.stderr is None:
+    import os
+
+    _devnull = open(os.devnull, "w", encoding="utf-8")
+    sys.stdout = sys.stdout or _devnull
+    sys.stderr = sys.stderr or _devnull
+
 # Windows konsolu varsayilan cp1252; Turkce karakterler UnicodeEncodeError verir.
 for _stream in (sys.stdout, sys.stderr):
     try:
@@ -255,13 +264,22 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.show:
-        from .overlay import SHOW_FLAG
+        from .config import PROJECT_ROOT
+        from .instance import launch_detached, request_show, running_pid
 
-        SHOW_FLAG.write_text("show", encoding="utf-8")
-        print("Altyazi penceresi geri getiriliyor (calisan uygulama 1 sn icinde gosterir).")
-        print("Uygulama zaten kapaliysa bu dosya bir sonraki acilista silinir:")
-        print(f"  {SHOW_FLAG}")
-        return 0
+        pid = running_pid()
+        if pid is None:
+            print("Calisan uygulama yok -> baslatiliyor...")
+            launch_detached(PROJECT_ROOT)
+            print("Altyazi penceresi birkac saniye icinde acilacak.")
+            return 0
+        print(f"Calisan uygulama bulundu (PID {pid}), pencere isteniyor...")
+        if request_show():
+            print("Altyazi penceresi geri getirildi ve ekranin altina ortalandi.")
+            return 0
+        print("Uygulama yanit vermedi. Muhtemelen eski surumu calisiyor;")
+        print("pencereyi Ctrl+Shift+H ile dene, olmazsa uygulamayi yeniden baslat.")
+        return 1
 
     cfg = load_config(args.config)
     if args.model:
@@ -288,9 +306,10 @@ def main(argv: list[str] | None = None) -> int:
     else:
         from .overlay import Overlay
 
-        from .overlay import SHOW_FLAG
+        from .instance import SHOW_FLAG, clear_pid, write_pid
 
         SHOW_FLAG.unlink(missing_ok=True)  # onceki oturumdan kalan bayrak
+        write_pid()
         overlay = Overlay(cfg["ui"], pipe.ui_q, on_quit=pipe.stop,
                           on_mode_change=pipe.on_mode_change)
         pipe.is_paused = lambda: overlay.paused
@@ -301,6 +320,10 @@ def main(argv: list[str] | None = None) -> int:
         overlay.run()
 
     pipe.stop()
+    if not args.console:
+        from .instance import clear_pid
+
+        clear_pid()
     time.sleep(0.4)  # segmenter yarim cumleyi bosaltsin
     md = pipe.log.close()
     if md:

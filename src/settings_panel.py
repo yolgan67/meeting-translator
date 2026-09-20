@@ -37,6 +37,9 @@ class SettingsPanel:
         self.font_en = tk.IntVar(value=int(cfg.get("font_size_en", 12)))
         self.opacity = tk.DoubleVar(value=float(cfg.get("opacity", 0.85)))
         self.max_lines = tk.IntVar(value=int(cfg.get("max_lines", 4)))
+        self.auto_height = tk.BooleanVar(value=bool(cfg.get("auto_height", True)))
+        self.win_w = tk.IntVar(value=int(cfg.get("width", 900)))
+        self.win_h = tk.IntVar(value=int(overlay.root.winfo_height() or cfg.get("height", 260)))
         self.show_partial = tk.BooleanVar(value=bool(cfg.get("show_partial", True)))
         self.color_tr = cfg.get("color_tr", "#ffffff")
         self.color_en = cfg.get("color_en", "#8b98a5")
@@ -85,7 +88,20 @@ class SettingsPanel:
         ).grid(row=row, column=1, columnspan=2, sticky="w", padx=(0, 12))
         row += 1
 
-        row = self._spin_row("Ekranda kac replik", self.max_lines, 1, 10, row)
+        sw = self.overlay.root.winfo_screenwidth()
+        sh = self.overlay.root.winfo_screenheight()
+        row = self._scale_row("Genislik", self.win_w, 420, sw, 20, row, self._apply_width)
+        tk.Checkbutton(
+            self.win, text="Yuksekligi replik sayisina gore ayarla",
+            variable=self.auto_height, command=self._apply,
+            bg=PANEL_BG, fg=PANEL_FG, selectcolor=PANEL_BG,
+            activebackground=PANEL_BG, activeforeground=PANEL_FG,
+            highlightthickness=0, anchor="w", font=("Segoe UI", 9),
+        ).grid(row=row, column=0, columnspan=3, sticky="w", padx=12, pady=(6, 0))
+        row += 1
+        row = self._scale_row("Yukseklik", self.win_h, 100, int(sh * 0.9), 10, row,
+                              self._apply_height)
+        row = self._spin_row("Tutulan replik sayisi", self.max_lines, 1, 10, row)
 
         tk.Checkbutton(
             self.win, text="Ara altyazi (cumle bitmeden gosterilen soluk satir)",
@@ -130,6 +146,18 @@ class SettingsPanel:
                     command=self._apply).grid(row=row, column=1, sticky="w")
         return row + 1
 
+    def _scale_row(self, label: str, var, lo: int, hi: int, step: int, row: int,
+                   command) -> int:
+        tk.Label(self.win, text=label, bg=PANEL_BG, fg=PANEL_FG,
+                 font=("Segoe UI", 9)).grid(row=row, column=0, sticky="w", padx=12, pady=2)
+        tk.Scale(
+            self.win, from_=lo, to=hi, resolution=step, orient="horizontal",
+            variable=var, command=lambda _=None: command(),
+            bg=PANEL_BG, fg=PANEL_FG, troughcolor="#0f1216", highlightthickness=0,
+            length=200, showvalue=True, font=("Segoe UI", 8),
+        ).grid(row=row, column=1, columnspan=2, sticky="w", padx=(0, 12))
+        return row + 1
+
     def _color_row(self, label: str, attr: str, row: int) -> int:
         tk.Label(self.win, text=label, bg=PANEL_BG, fg=PANEL_FG,
                  font=("Segoe UI", 9)).grid(row=row, column=0, sticky="w", padx=12, pady=4)
@@ -166,6 +194,23 @@ class SettingsPanel:
             pass
         self._apply()
 
+    def _apply_width(self) -> None:
+        self.overlay.set_geometry(width=int(self.win_w.get()))
+        self._apply()
+
+    def _apply_height(self) -> None:
+        """Yukseklik kaydirici: elle ayar otomatigi kapatir."""
+        if self.auto_height.get():
+            self.auto_height.set(False)
+        self.overlay.apply_settings(self._values())
+        self.overlay.set_geometry(height=int(self.win_h.get()))
+        self._say("yukseklik elle ayarlandi (otomatik kapatildi)")
+
+    def _sync_height(self) -> None:
+        """Otomatik moddayken kaydirici hesaplanan yuksekligi gostersin."""
+        if self.auto_height.get():
+            self.win_h.set(self.overlay.root.winfo_height())
+
     def _values(self) -> dict:
         return {
             "mode": self.mode.get(),
@@ -177,12 +222,16 @@ class SettingsPanel:
             "color_tr": self.color_tr,
             "color_en": self.color_en,
             "color_bg": self.color_bg,
+            "auto_height": bool(self.auto_height.get()),
+            "width": int(self.win_w.get()),
+            "height": int(self.win_h.get()),
         }
 
     def _apply(self) -> None:
         try:
             self.overlay.apply_settings(self._values())
-            if getattr(self.overlay, "height_capped", False):
+            self._sync_height()
+            if self.auto_height.get() and getattr(self.overlay, "height_capped", False):
                 self._say("bu kadar satir ekrana sigmiyor - yazi boyutunu kucult")
             else:
                 self._say("uygulandi (kalici olmasi icin Kaydet)")
@@ -215,6 +264,8 @@ class SettingsPanel:
         self.opacity.set(d["opacity"])
         self.max_lines.set(d["max_lines"])
         self.show_partial.set(d["show_partial"])
+        self.auto_height.set(d["auto_height"])
+        self.win_w.set(d["width"])
         self.color_tr, self.color_en, self.color_bg = (
             d["color_tr"], d["color_en"], d["color_bg"])
         self._apply()

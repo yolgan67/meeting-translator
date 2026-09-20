@@ -7,15 +7,10 @@ Gorunum ayarlari sag ustteki dis simgesinden canli degistirilebilir
 from __future__ import annotations
 
 import queue
-import tempfile
 import tkinter as tk
 from dataclasses import dataclass
-from pathlib import Path
 
-# "Geri getir" bayragi: calisan ornek bu dosyayi gozler, ikinci kez baslatilan
-# uygulama (--show) dosyayi yazip cikar. Global kisayol kaydolmazsa gizlenen
-# pencerenin geri getirilmesinin tek yolu bu; gizli pencere odak alamiyor.
-SHOW_FLAG = Path(tempfile.gettempdir()) / "meeting-translator-show.flag"
+from .instance import SHOW_FLAG
 
 BAR_BG = "#171c22"
 FG_DIM = "#5c6773"
@@ -270,6 +265,16 @@ class Overlay:
         y = max(0, bottom - target)
         self.root.geometry(f"{self.root.winfo_width()}x{target}+{self.root.winfo_x()}+{y}")
         return True
+
+    def set_geometry(self, width: int | None = None, height: int | None = None) -> None:
+        """Genislik/yukseklik ayarlar; alt kenar sabit kalir."""
+        self.root.update_idletasks()
+        cur_w, cur_h = self.root.winfo_width(), self.root.winfo_height()
+        w = int(width or cur_w)
+        h = int(height or cur_h)
+        bottom = self.root.winfo_y() + cur_h
+        self.root.geometry(f"{w}x{h}+{self.root.winfo_x()}+{max(0, bottom - h)}")
+        self._ensure_on_screen()
 
     def apply_settings(self, values: dict) -> None:
         """Ayar penceresinden gelen degerleri aninda uygular."""
