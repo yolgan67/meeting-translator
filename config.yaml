@@ -26,7 +26,12 @@ asr:
   # initial_prompt: "Salesforce, Apex, LWC, sandbox, Jira, sprint, backlog,
   #   Dragin, Azure DevOps, API, endpoint, payload"
   #
-  initial_prompt: ""
+  # Salesforce/IT + MCA (merchant cash advance) toplantilari icin. 24.09
+  # toplantisinda "ISO" -> "iPhone", "underwriting" -> "on the writing/riding"
+  # olarak yaziliyordu. Bu projede hesap tipi IFO (BF_Account_Type__c = IFO), ISO degil;
+  # "iPhone" hatalarinin cogu aslinda "IFO". Ozel isimler (Herman, Andy...) bilerek yok; toplantiya
+  # gore eklenebilir.
+  initial_prompt: "Salesforce, Apex, LWC, SOQL, governor limits, trigger, sandbox, org, Flow, deployment, Jira, sprint, backlog, API, endpoint, payload. MCA underwriting: IFO, underwriter, merchant, deal, term sheet, syndication, ACH, NSF, DocuSign, funders, stacking, positions, payback, holdback."
   # Halusinasyon filtresi (olculen: gercek konusma -0.07..-0.40, uydurma -1.03..-1.61)
   min_avg_logprob: -0.85
   partial_min_avg_logprob: -0.6   # ara altyazilar icin daha siki esik
@@ -76,7 +81,113 @@ translate:
   #   "UAT": "user acceptance testing"
   #   "SIT": "system integration testing"
   #
-  phrase_map: {}
+  # Asagidaki her karsilik 24.09'da tek tek denendi; soldaki Ingilizce bozuk,
+  # sagdaki dogru Turkce veriyordu (ornek: "underwriting" -> "alt yazarlik",
+  # "credit evaluation" -> "kredi degerlendirmesi").
+  phrase_map:
+    # --- MCA / finansman ---
+    "underwriting": "credit evaluation"
+    "underwriter": "credit analyst"
+    "underwriters": "credit analysts"
+    "underwrite": "evaluate the credit of"
+    "merchant cash advance": "MCA loan"
+    "merchant cash advances": "MCA loans"
+    "merchant": "business owner"
+    "merchants": "business owners"
+    "term sheet": "offer summary"
+    "term sheets": "offer summaries"
+    "miss payment": "missed payment"
+    "miss payments": "missed payments"
+    "makeup payment": "payment to make up for a missed payment"
+    "make up payment": "payment to make up for a missed payment"
+    "make-up payment": "payment to make up for a missed payment"
+    "payback amount": "total repayment amount"
+    "payback": "total repayment"
+    "remittance": "payment amount"
+    "voided check": "cancelled check"
+    "void check": "cancelled check"
+    "average daily balance": "average daily account balance"
+    "monthly breakdown": "monthly summary"
+    "breakdown": "detailed summary"
+    "background check": "background investigation"
+    "affordability": "repayment capacity"
+    "collections": "payment collection"
+    "collection": "payment collection"
+    "origination fee": "loan processing fee"
+    "funders": "financing companies"
+    "funder": "financing company"
+    "deal intake": "receiving the application"
+    "holdback": "Holdback"
+    "stacking": "taking multiple loans at the same time"
+    "push the deal": "send the deal"
+    "pushed the deal": "sent the deal"
+    "push it to": "send it to"
+    # Whisper IFO'yu "iPhone" duyuyor (24.09'da 6+ kez); sadece bu kaliplar duzeltilir
+    "iphone side": "IFO side"
+    "like an iphone": "like an IFO"
+    # --- Salesforce ---
+    "sandbox": "Sandbox"
+    "sandboxes": "Sandboxes"
+    "full sandbox": "Full Sandbox"
+    "scratch org": "Scratch Org"
+    "salesforce org": "Salesforce org"
+    "salesforce orgs": "Salesforce orgs"
+    "org": "Salesforce org"
+    "orgs": "Salesforce orgs"
+    "governor limits": "Salesforce platform limits"
+    "governor limit": "Salesforce platform limit"
+    "picklist": "Picklist"
+    "apex trigger": "Apex Trigger"
+    "the trigger": "the Apex Trigger"
+    "fires on update": "runs when a record is updated"
+    "runs on update": "runs when a record is updated"
+    "fires on insert": "runs after insert"
+    "apex triggers": "Apex Triggers"
+    "record-triggered flow": "Record-Triggered Flow"
+    "change set": "Change Set"
+    "change sets": "Change Sets"
+    "lead record": "Lead record"
+    "convert the lead": "convert the Lead record"
+    "closed won": "Closed Won"
+    "closed lost": "Closed Lost"
+    "named credential": "Named Credential configuration"
+    "named credentials": "Named Credential configurations"
+    "create a case": "create a customer support request"
+    "open a case": "open a customer support request"
+    "not rendering": "not displayed"
+    # --- Yazilim / bulut ---
+    "bug": "software error"
+    "bugs": "software errors"
+    "bug fix": "error fix"
+    "hotfix": "urgent fix"
+    "backlog": "Backlog"
+    "endpoint": "API address"
+    "endpoints": "API addresses"
+    "callout": "API call"
+    "callouts": "API calls"
+    "payload": "request data"
+    "data migration": "data transfer"
+    "field mapping": "field matching"
+    "mapping": "matching"
+    "jira ticket": "Jira task"
+    "jira tickets": "Jira tasks"
+    "not firing": "not triggering"
+    "pull request": "Pull Request"
+    "the environment": "the system environment"
+    "in production": "in the live environment"
+    "to production": "to the live environment"
+    "in prod": "in the live environment"
+    "to prod": "to the live environment"
+    "live run": "live test"
+    "sign off": "give approval"
+    "edit access": "editing permission"
+    # --- Toplanti konusmasi ---
+    "you're muted": "your microphone is off"
+    "you are muted": "your microphone is off"
+    "you're on mute": "your microphone is off"
+    "off the bat": "from the start"
+    "hit this": "click this"
+    "hit the button": "click the button"
 
   # TURKCE CIKTI ROTUSU (Turkce -> Turkce). En son uygulanir; bir terimi
   # Ingilizce birakmak ya da tercih ettigin kelimeyi kullanmak icin.
@@ -87,7 +198,16 @@ translate:
   #   "yazilim surumu": "deployment"
   #   "cekme istegi": "PR"
   #
-  post_map: {}
+  # Modelin Ingilizce girdiyle duzeltilemeyen ciktilari (olculdu 24.09).
+  post_map:
+    "jeton": "token"
+    "Jeton": "Token"
+    "boru hattı": "pipeline"
+    "Boru hattı": "Pipeline"
+    "Kapalı Won": "Closed Won"
+    "Kapalı Kayıp": "Closed Lost"
+    "Sahneleme": "Staging"
+    "sahneleme": "staging"
   model_dir: models/opus-mt-en-tr-ct2
   source_prefix: ""     # cok hedefli modeller icin ornegin ">>tur<<"
   deepl_api_key: ""     # engine: deepl secilirse doldurulur (opsiyonel, ucretsiz kota)

@@ -7,6 +7,7 @@ none   : ceviri yok, sadece Ingilizce transkript
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
 from collections import OrderedDict
@@ -15,6 +16,16 @@ from pathlib import Path
 
 class TranslationError(RuntimeError):
     pass
+
+
+# Cumle sonu: . ! ? ve ardindan bosluk + buyuk harf/rakam/tirnak. Whisper yeni
+# cumleye buyuk harfle baslar; "15.000" veya "e.g. this" bolunmez.
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'])")
+
+
+def split_sentences(text: str) -> list[str]:
+    parts = [p.strip() for p in _SENTENCE_END.split(text.strip())]
+    return [p for p in parts if p] or [text.strip()]
 
 
 class _Cache:
@@ -145,18 +156,27 @@ class LocalCT2Engine(BaseEngine):
 
         # Deyimler once sade Ingilizce'ye cevrilir; ekranda gosterilen metin degismez.
         prepared = paraphrase(text, self._pattern, self._phrases)
-        source = f"{self.source_prefix} {prepared}".strip() if self.source_prefix else prepared
-        # Marian modelleri cumle sonunu </s> ile anlar; eklenmezse decoder
-        # durmaz ve ayni ifadeyi tekrarlar.
-        tokens = self.sp_src.encode(source, out_type=str) + ["</s>"]
+        # Olculdu (24.09 toplantisi): cok cumleli replik tek parca verilince
+        # model sondaki cumleleri sessizce atiyor ("They're just going for less.
+        # All right, great." hic cevrilmedi, 154 replikten 20+'sinda). Her cumle
+        # ayri cevrilir ama tek batch'te gider; ek maliyet replik basina ~100 ms.
+        sentences = split_sentences(prepared)
+        batch = []
+        for sentence in sentences:
+            source = f"{self.source_prefix} {sentence}" if self.source_prefix else sentence
+            # Marian modelleri cumle sonunu </s> ile anlar; eklenmezse decoder
+            # durmaz ve ayni ifadeyi tekrarlar.
+            batch.append(self.sp_src.encode(source, out_type=str) + ["</s>"])
         results = self.translator.translate_batch(
-            [tokens],
+            batch,
             beam_size=beam,
             max_decoding_length=256,
             repetition_penalty=1.1, # kalan tekrar egilimine karsi emniyet
             replace_unknowns=True,
         )
-        out = self.sp_tgt.decode(results[0].hypotheses[0]).strip()
+        out = " ".join(
+            self.sp_tgt.decode(r.hypotheses[0]).strip() for r in results
+        ).strip()
         for src, dst in self._post_map.items():
             out = out.replace(src, dst)
         self._cache.put(key, out)
